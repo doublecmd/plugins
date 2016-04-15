@@ -1,11 +1,10 @@
 library diskdir;
 
 {$mode delphi}
-{$asmmode intel}
 {$include calling.inc}
 
 uses
-  SysUtils, Classes, WcxPlugin, Extension;
+  SysUtils, Classes, WcxPlugin, Extension, UnixUtil;
 
 var
   gStartupInfo: TExtensionStartupInfo;
@@ -103,198 +102,19 @@ type
     Year, Month, Day, Hour, Min, Sec: Word;
   end;
 
-procedure PackTime(var T: TDateTime1; var P: Longint); assembler; {$ifdef win32} pascal;{$endif}
-asm
-{$ifdef i386}
-        PUSH EDI
-        PUSH ESI
-        PUSH EBX
-        MOV EDI,[P]
-        MOV  ESI,[T]
-{$else}
-        PUSH RDI
-        PUSH RSI
-        PUSH RBX
-        MOV RDI,P
-        MOV  RSI,T
-{$endif}
-	CLD
-	LODSW
-	SUB	AX,1980
-	MOV	CL,9
-	SHL	AX,CL
-	XCHG	AX,DX
-	LODSW
-	MOV	CL,5
-	SHL	AX,CL
-	ADD	DX,AX
-	LODSW
-	ADD	DX,AX
-	LODSW
-	MOV	CL,11
-	SHL	AX,CL
-	XCHG	AX,BX
-	LODSW
-	MOV	CL,5
-	SHL	AX,CL
-	ADD	BX,AX
-	LODSW
-	SHR	AX,1
-	ADD	AX,BX
-	STOSW
-	XCHG	AX,DX
-	STOSW
-        {$ifdef i386}
-        POP EBX
-        POP ESI
-        POP EDI
-        {$else}
-        POP RBX
-        POP RSI
-        POP RDI
-        {$endif}
+procedure PackTime(var T: TDateTime1; var P: Longint);
+begin
+  P:= LocalToEpoch(T.Year, T.Month, T.Day, T.Hour, T.Min, T.Sec);
 end;
 
-procedure UnpackTime(P: Longint; var T: TDateTime1); assembler; pascal;
-asm
-{$ifdef i386}
-  PUSH    EBX
-  PUSH    EDI
-  MOV     EDI,T
-{$else}
-  PUSH    RBX
-  PUSH    RDI
-  MOV     RDI,T
-{$endif}
-  MOV EBX,P
-	CLD
-	MOV	EAX,EBX
-	MOV	CL,9+16
-	SHR	EAX,CL
-	ADD	AX,1980
-	STOSW
-	MOV	EAX,EBX
-	MOV	CL,5+16
-	SHR	EAX,CL
-	AND	AX,15
-	STOSW
-	MOV	EAX,EBX
-	MOV	CL,16
-	SHR	EAX,CL
-	AND	AX,31
-	STOSW
-	MOV	AX,BX
-	MOV	CL,11
-	SHR	AX,CL
-	STOSW
-	MOV	AX,BX
-	MOV	CL,5
-	SHR	AX,CL
-	AND	AX,63
-	STOSW
-	MOV	AX,BX
-	AND	AX,31
-	SHL	AX,1
-	STOSW
-{$ifdef i386}
-        POP    EDI
-        POP    EBX
-{$else}
-        POP    RDI
-        POP    RBX
-{$endif}
+procedure UnpackTime(P: Longint; var T: TDateTime1);
+begin
+  EpochToLocal(P, T.Year, T.Month, T.Day, T.Hour, T.Min, T.Sec);
 end;
 
 function ReadHeader(hArcData:thandle;var HeaderData:THeaderData):longint; dcpcall;
-var buf:array[0..1023] of char;
-    buf1:array[0..259] of char;
-    p,p1,psize,pdate,ptime:pchar;
-    tdt:TDateTime1;
-    code:integer;
 begin
-  if ArchiveList[hArcData].ArchiveActive then begin
-    if not ArchiveList[hArcData].ArchiveActive then
-      Result:=E_BAD_ARCHIVE
-    else if eof(ArchiveList[hArcData].ArchiveHandle) then
-      Result:=E_END_ARCHIVE
-    else begin
-      {$i-}
-      readln(ArchiveList[hArcData].ArchiveHandle,buf);
-      if ArchiveList[hArcData].SrcDir[0]=#0 then begin   {First line!}
-        if strscan(buf,#9)=nil then begin
-          strcopy(ArchiveList[hArcData].SrcDir,buf);
-          readln(ArchiveList[hArcData].ArchiveHandle,buf);
-        end;
-      end;
-      {$i+}
-      if ioresult=0 then begin
-        fillchar(HeaderData,sizeof(HeaderData)-16,#0);
-        p:=strtok(buf,#9);
-        psize:=strtok(nil,#9);
-        pdate:=strtok(nil,#9);
-        ptime:=strtok(nil,#9);
-        if (buf[0]<>#0) and (buf[strlen(buf)-1]=PathDelim) then
-          HeaderData.FileAttr:=fadirectory;
-        if strscan(buf,PathDelim)=nil then begin  {No directory -> assume last given dir!}
-          strlcopy(buf1,ArchiveList[hArcData].LastCurDir,sizeof(HeaderData.FileName)-1);
-        end else begin
-          if HeaderData.FileAttr=fadirectory then
-            strlcopy(ArchiveList[hArcData].LastCurDir,buf,sizeof(ArchiveList[hArcData].lastcurdir)-1);
-          buf1[0]:=#0;
-        end;
-        strlcat(buf1,buf,sizeof(buf1)-1);
-        p:=strscan(buf1,':');
-        if p<>nil then inc(p,2)
-                  else p:=buf1;
-        strlcopy(HeaderData.FileName,p,sizeof(HeaderData.FileName));
-        if ArchiveList[hArcData].SrcDir[0]=#0 then   {First line!}
-          strlcopy(ArchiveList[hArcData].SrcDir,buf1,3);
-
-        strlcopy(HeaderData.ArcName,ArchiveList[hArcData].ArchiveName,sizeof(HeaderData.ArcName)-1);
-
-        if psize<>nil then begin
-          val(psize,HeaderData.UnpSize,code);
-          if code<>0 then HeaderData.UnpSize:=-1;
-          HeaderData.PackSize:=HeaderData.UnpSize;
-        end else
-          HeaderData.UnpSize:=-1;
-        HeaderData.FileTime:=-1;
-        if pdate<>nil then begin {Year.month.day}
-          fillchar(tdt,sizeof(tdt),#0);
-          p1:=strtok(pdate,'.');
-          val(p1,tdt.year,code);
-          p1:=strtok(nil,'.');
-          if (code=0) and (p1<>nil) then begin
-            if tdt.year<1900 then if tdt.year<80 then inc(tdt.year,2000)
-                                                 else inc(tdt.year,1900);
-            val(p1,tdt.month,code);
-            p1:=strtok(nil,'.');
-            if (code=0) and (p1<>nil) then begin
-              val(p1,tdt.day,code);
-              if code=0 then begin
-                if ptime<>nil then begin {hour:min:seconds}
-                  p1:=strtok(ptime,':');
-                  val(p1,tdt.hour,code);
-                  p1:=strtok(nil,'.');
-                  if (code=0) and (p1<>nil) then begin
-                    val(p1,tdt.min,code);
-                    p1:=strtok(nil,'.');
-                    if (code=0) then
-                      if (p1<>nil) then val(p1,tdt.sec,code);
-                  end;
-                end;
-                packtime(tdt,HeaderData.FileTime);
-              end;
-            end;
-          end;
-        end;
-        strlcopy(ArchiveList[hArcData].CurrentFileName,HeaderData.filename,sizeof(ArchiveList[hArcData].CurrentFileName)-1);
-        ArchiveList[hArcData].CurrentFileTime:=HeaderData.FileTime;
-        Result:=0;
-      end else
-        Result:=E_EREAD;
-    end;
-  end;
+  Result:=E_NOT_SUPPORTED;
 end;
 
 function makecomp(lowlong,highlong:longint):comp;
