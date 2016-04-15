@@ -45,9 +45,9 @@ BEGIN
   _TokenSource := P;
 END;
 
-function OpenArchive(var ArchiveData:tOpenArchiveData):thandle; dcpcall;
+function OpenArchive(var ArchiveData:tOpenArchiveData):TArcHandle; dcpcall;
 var i:integer;
-    archandle:integer;
+    archandle:TArcHandle;
     foundslot:boolean;
 begin
   result:=0;
@@ -81,7 +81,7 @@ begin
   end;
 end;
 
-function CloseArchive(hArcData:thandle):longint; dcpcall;
+function CloseArchive(hArcData:TArcHandle):longint; dcpcall;
 begin
   with ArchiveList[hArcData] do begin
     if ArchiveActive then begin
@@ -112,7 +112,7 @@ begin
   EpochToLocal(P, T.Year, T.Month, T.Day, T.Hour, T.Min, T.Sec);
 end;
 
-function ReadHeader(hArcData:thandle;var HeaderData:THeaderData):longint; dcpcall;
+function ReadHeader(hArcData:TArcHandle;var HeaderData:THeaderData):longint; dcpcall;
 begin
   Result:=E_NOT_SUPPORTED;
 end;
@@ -136,7 +136,7 @@ type tcomprec=record
          false:(cmp:comp);
        end;
 
-function ReadHeaderEx(hArcData:thandle;var HeaderData:THeaderDataEx):longint; dcpcall;
+function ReadHeaderEx(hArcData:TArcHandle;var HeaderData:THeaderDataEx):longint; dcpcall;
 var buf:array[0..1023] of char;
     buf1:array[0..259] of char;
     p,p1,psize,pdate,ptime:pchar;
@@ -274,7 +274,7 @@ begin
   result:=err;
 end;
 
-function ProcessFile(hArcData:thandle;Operation:longint;DestPath,DestName:pchar):longint; dcpcall;
+function ProcessFile(hArcData:TArcHandle;Operation:longint;DestPath,DestName:pchar):longint; dcpcall;
 var srcfile,trgfile:array[0..259] of char;
     f,g:file;
     buf:array[0..32767] of char;
@@ -362,19 +362,19 @@ end;
 var PackerChangeVolProc:TChangeVolProc;
     PackerProcessDataProc:TProcessDataProc;
 
-function SetChangeVolProc(hArcData:THandle;ChangeVolProc1:TChangeVolProc):longint; dcpcall;
+function SetChangeVolProc(hArcData:TArcHandle;ChangeVolProc1:TChangeVolProc):longint; dcpcall;
 begin
   Result:= 0;
-  if hArcData=-1 then
+  if hArcData = wcxInvalidHandle then
     PackerChangeVolProc:=ChangeVolProc1
   else
     ArchiveList[hArcData].ChangeVolProc:=ChangeVolProc1;
 end;
 
-function SetProcessDataProc(hArcData:THandle;ProcessDataProc1:TProcessDataProc):longint; dcpcall;
+function SetProcessDataProc(hArcData:TArcHandle;ProcessDataProc1:TProcessDataProc):longint; dcpcall;
 begin
   Result:= 0;
-  if hArcData=-1 then
+  if hArcData = wcxInvalidHandle then
     PackerProcessDataProc:=ProcessDataProc1
   else
     ArchiveList[hArcData].ProcessDataProc:=ProcessDataProc1;
@@ -449,7 +449,7 @@ begin
   result:=PK_CAPS_NEW or PK_CAPS_MULTIPLE or PK_CAPS_OPTIONS;
 end;
 
-procedure ConfigurePacker(ParentHandle,DllInstance:thandle); dcpcall;
+procedure ConfigurePacker(ParentHandle: HWND; DllInstance:thandle); dcpcall;
 begin
   gStartupInfo.MessageBox('Diskdir plugin, Copyright © 1999-2012 by Christian Ghisler' + LineEnding +
   LineEnding + 'Linux version, Copyright © 2016 by Alexander Koblov',
