@@ -1,6 +1,6 @@
 # compiler options
 CC = gcc
-CFLAGS =-I. -I/usr/include -I../../../../sdk \
+CFLAGS =-I. -I/usr/include -I../../sdk \
 	-Wall -fPIC -O2 -g -std=c99 \
 	-DG_DISABLE_DEPRECATED -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_GNU_SOURCE
 
