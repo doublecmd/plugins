@@ -4,7 +4,7 @@ library diskdir;
 {$include calling.inc}
 
 uses
-  SysUtils, Classes, WcxPlugin, Extension, UnixUtil;
+  SysUtils, Classes, WcxPlugin, Extension, UnixUtil, BaseUnix;
 
 var
   gStartupInfo: TExtensionStartupInfo;
@@ -166,11 +166,11 @@ begin
         pdate:=strtok(nil,#9);
         ptime:=strtok(nil,#9);
         if (buf[0]<>#0) and (buf[strlen(buf)-1]=PathDelim) then
-          HeaderData.FileAttr:=fadirectory;
+          HeaderData.FileAttr:= S_IFDIR;
         if strscan(buf,PathDelim)=nil then begin  {No directory -> assume last given dir!}
           strlcopy(buf1,ArchiveList[hArcData].LastCurDir,sizeof(HeaderData.FileName)-1);
         end else begin
-          if HeaderData.FileAttr=fadirectory then
+          if HeaderData.FileAttr = S_IFDIR then
             strlcopy(ArchiveList[hArcData].LastCurDir,buf,sizeof(ArchiveList[hArcData].lastcurdir)-1);
           buf1[0]:=#0;
         end;
