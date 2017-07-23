@@ -1,3 +1,7 @@
+Exif plugin for Double Commander (Linux version). It is based on
+
+----------------------------------------------------------------
+
 Exif plugin version 2.4 for Total Commander
 
 This plugin extracts digital camera data from JPG files, like exposure time.
