@@ -1,3 +1,7 @@
+Diskdir plugin for Double Commander (Linux version). It is based on
+
+----------------------------------------------------------------
+
 Diskdir v1.3 - plugin for Total Commander
 
 How to install this plugin (32 bit only):
