@@ -2,6 +2,7 @@
 #include "wdxplugin.h"
 #include <cstring>
 #include <string>
+#include <ctime>
 #include <iostream>
 #include <sstream>
 #include "OfficeCore.h"
@@ -94,13 +95,26 @@ char* strlcpy(char* p,const char* p2,int maxlen)
     return p;
 }
 
-DCPCALL int ContentGetDetectString(char* DetectString,int maxlen)
+static BOOL SystemTimeToFileTime(struct tm *lpSystemTime, LPFILETIME lpFileTime)
+{
+    lpSystemTime->tm_mon -= 1;
+    lpSystemTime->tm_isdst = -1;
+    lpSystemTime->tm_year -= 1900;
+    uint64_t unix_time = mktime(lpSystemTime);
+    if (unix_time == (uint64_t)-1) return false;
+    unix_time = (unix_time * 10000000) + 0x019DB1DED53E8000;
+    lpFileTime->dwLowDateTime = (DWORD)unix_time;
+    lpFileTime->dwHighDateTime = unix_time >> 32;
+    return true;
+}
+
+int DCPCALL ContentGetDetectString(char* DetectString,int maxlen)
 {
     strlcpy(DetectString,_detectstring,maxlen);
     return 0;
 }
 
-DCPCALL int ContentGetSupportedField(int FieldIndex,char* FieldName,char* Units,int maxlen)
+int DCPCALL ContentGetSupportedField(int FieldIndex,char* FieldName,char* Units,int maxlen)
 {
     if (FieldIndex<0 || FieldIndex>=fieldcount)
         return ft_nomorefields;
@@ -109,7 +123,7 @@ DCPCALL int ContentGetSupportedField(int FieldIndex,char* FieldName,char* Units,
     return fields[FieldIndex].type;
 }
 
-DCPCALL int ContentGetValue(char* FileName,int FieldIndex,int UnitIndex,void* FieldValue,int maxlen,int flags)
+int DCPCALL ContentGetValue(char* FileName,int FieldIndex,int UnitIndex,void* FieldValue,int maxlen,int flags)
 {
     string tmpval = "";
     int tmpvalint = -1;
@@ -125,7 +139,9 @@ DCPCALL int ContentGetValue(char* FileName,int FieldIndex,int UnitIndex,void* Fi
 
         OfficeFullText* oft = new OfficeFullText(FileName);
 
-        int tmphours = 0;
+        std::tm systime = {0};
+
+        int tmphours = 0;        
 
         switch (FieldIndex) {
         //CORE
@@ -143,15 +159,12 @@ DCPCALL int ContentGetValue(char* FileName,int FieldIndex,int UnitIndex,void* Fi
             break;
         case 3:  //	dcterms_created
             tmpval = oc->dcterms_created;
-            /*
-            if (6 == sscanf(tmpval.c_str(), DATETIME_STRING, &systime.wYear, &systime.wMonth, &systime.wDay, &systime.wHour, &systime.wMinute, &systime.wSecond))
+            if (6 == sscanf(tmpval.c_str(), DATETIME_STRING, &systime.tm_year, &systime.tm_mon, &systime.tm_mday, &systime.tm_hour, &systime.tm_min, &systime.tm_sec))
             {
                 // time zone correction
-                SystemTimeToFileTime(&systime, &ft);
-                LocalFileTimeToFileTime(&ft, (FILETIME*) FieldValue);
+                SystemTimeToFileTime(&systime, (FILETIME*)FieldValue);
             }
             else
-            */
             {
                 return ft_fieldempty;
             }
@@ -183,15 +196,12 @@ DCPCALL int ContentGetValue(char* FileName,int FieldIndex,int UnitIndex,void* Fi
             break;
         case 10:  // cp_lastPrinted // ft_datetime
             tmpval = oc->cp_lastPrinted;
-            /*
-            if (6 == sscanf(tmpval.c_str(), DATETIME_STRING, &systime.wYear, &systime.wMonth, &systime.wDay, &systime.wHour, &systime.wMinute, &systime.wSecond))
+            if (6 == sscanf(tmpval.c_str(), DATETIME_STRING, &systime.tm_year, &systime.tm_mon, &systime.tm_mday, &systime.tm_hour, &systime.tm_min, &systime.tm_sec))
             {
                 // time zone correction
-                SystemTimeToFileTime(&systime, &ft);
-                LocalFileTimeToFileTime(&ft, (FILETIME*) FieldValue);
+                SystemTimeToFileTime(&systime, (FILETIME*)FieldValue);
             }
             else
-            */
             {
                 return ft_fieldempty;
             }
@@ -200,15 +210,12 @@ DCPCALL int ContentGetValue(char* FileName,int FieldIndex,int UnitIndex,void* Fi
             break;
         case 11:  // dcterms_modified
             tmpval = oc->dcterms_modified;
-            /*
-            if (6 == sscanf(tmpval.c_str(), DATETIME_STRING, &systime.wYear, &systime.wMonth, &systime.wDay, &systime.wHour, &systime.wMinute, &systime.wSecond))
+            if (6 == sscanf(tmpval.c_str(), DATETIME_STRING, &systime.tm_year, &systime.tm_mon, &systime.tm_mday, &systime.tm_hour, &systime.tm_min, &systime.tm_sec))
             {
                 // time zone correction
-                SystemTimeToFileTime(&systime, &ft);
-                LocalFileTimeToFileTime(&ft, (FILETIME*) FieldValue);
+                SystemTimeToFileTime(&systime, (FILETIME*)FieldValue);
             }
             else
-            */
             {
                 return ft_fieldempty;
             }
