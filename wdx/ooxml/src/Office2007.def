@@ -1,0 +1,4 @@
+EXPORTS
+	ContentGetDetectString
+	ContentGetSupportedField
+	ContentGetValue
