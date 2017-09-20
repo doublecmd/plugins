@@ -82,6 +82,10 @@ typedef struct {
 	WORD wSecond;
 } ttimeformat,*ptimeformat;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int DCPCALL ContentGetDetectString(char* DetectString,int maxlen);
 int DCPCALL ContentGetSupportedField(int FieldIndex,char* FieldName,char* Units,int maxlen);
 int DCPCALL ContentGetValue(char* FileName,int FieldIndex,int UnitIndex,void* FieldValue,int maxlen,int flags);
@@ -100,5 +104,9 @@ int DCPCALL ContentEditValue(HWND ParentWin,int FieldIndex,int UnitIndex,int Fie
                 void* FieldValue,int maxlen,int flags,char* langidentifier);
 void DCPCALL ContentSendStateInformation(int state,char* path);
 void DCPCALL ContentSendStateInformationW(int state,WCHAR* path);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // _WDX_H

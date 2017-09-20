@@ -8,7 +8,7 @@
 #if defined(__WIN32__) || defined(_WIN32) || defined(_WIN64)
   #define DCPCALL __attribute__((stdcall))
 #else
-  #define DCPCALL __attribute__((cdecl))
+  #define DCPCALL
 #endif
 
 #define MAX_PATH 260
