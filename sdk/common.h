@@ -1,3 +1,6 @@
+#ifndef _COMMON_H
+#define _COMMON_H
+
 #ifdef __GNUC__
 
 #include <stdint.h>
@@ -64,3 +67,5 @@ typedef struct _WIN32_FIND_DATAW {
 #endif
 
 #endif
+
+#endif // _COMMON_H

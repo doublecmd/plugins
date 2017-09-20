@@ -1,3 +1,6 @@
+#ifndef _WDX_H
+#define _WDX_H
+
 #include "common.h"
 
 // Contents of file contplug.h version 2.0
@@ -97,3 +100,5 @@ int DCPCALL ContentEditValue(HWND ParentWin,int FieldIndex,int UnitIndex,int Fie
                 void* FieldValue,int maxlen,int flags,char* langidentifier);
 void DCPCALL ContentSendStateInformation(int state,char* path);
 void DCPCALL ContentSendStateInformationW(int state,WCHAR* path);
+
+#endif // _WDX_H
