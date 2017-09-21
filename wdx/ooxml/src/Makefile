@@ -66,9 +66,9 @@ distclean: clean
 ####### Compile
 
 .c.o:
-	$(CC) -c $(CFLAGS) $(INCPATH) $(DEFINES) -c $<
+	$(CC) -c $(CFLAGS) $(INCPATH) -c $<
 
 .cpp.o:
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(INCPATH) $(DEFINES) -c $<
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(INCPATH) -c $<
 
 FORCE:
