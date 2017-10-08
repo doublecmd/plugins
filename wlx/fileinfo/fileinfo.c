@@ -8,14 +8,31 @@
 
 
 #include <stdio.h>
+#include <stdbool.h>
 #include <gtk/gtk.h>
 #include <X11/Xlib.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
+#include <dlfcn.h>
+#include "wlxplugin.h"
 
+#define DETECT_STRING "\
+(EXT=\"ISO\")|(EXT=\"TORRENT\")|(EXT=\"SO\")|(EXT=\"MO\")|\
+(EXT=\"DEB\")|(EXT=\"TAR\")|(EXT=\"LHA\")|(EXT=\"ARJ\")|\
+(EXT=\"CAB\")|(EXT=\"HA\")|(EXT=\"RAR\")|(EXT=\"ALZ\")|\
+(EXT=\"CPIO\")|(EXT=\"7Z\")|(EXT=\"ACE\")|(EXT=\"ARC\")|\
+(EXT=\"ZIP\")|(EXT=\"ZOO\")|(EXT=\"PS\")|(EXT=\"PDF\")|\
+(EXT=\"ODT\")|(EXT=\"DOC\")|(EXT=\"XLS\")|(EXT=\"DVI\")|\
+(EXT=\"DJVU\")|(EXT=\"EPUB\")|(EXT=\"HTML\")|(EXT=\"HTM\"\
+)"
 
-Window ListLoad (Window ParentWin, char* FileToLoad, int ShowFlags)
+static char script_path[PATH_MAX];
+const char* script_file = "fileinfo.sh";
+
+HANDLE DCPCALL ListLoad (HANDLE ParentWin, char* FileToLoad, int ShowFlags)
 {
 
 /*запуск скрипта в дочернем процессе*/
@@ -31,7 +48,7 @@ Window ListLoad (Window ParentWin, char* FileToLoad, int ShowFlags)
 		close(fds1[0]);
 		dup2(fds1[1], STDOUT_FILENO);
 		close(fds1[1]);
-		execlp("/home/user/.config/doublecmd/fileinfo.sh", "fileinfo.sh", FileToLoad, 0);
+		execlp(script_path, script_file, FileToLoad, 0);
 	}
 	else
 	{
@@ -79,13 +96,47 @@ Window ListLoad (Window ParentWin, char* FileToLoad, int ShowFlags)
 	gtk_widget_show (label);
 	free(buf1);
 /*--------------------------------------*/
-	return (Window)gFix;
+	return (HANDLE)gFix;
 
 }
 
-void ListCloseWindow(Window ListWin)
+void DCPCALL ListCloseWindow(HANDLE ListWin)
 {
 	gtk_widget_destroy(GTK_WIDGET(ListWin));
 }
 
 
+void DCPCALL ListSetDefaultParams(ListDefaultParamStruct* dps)
+{
+  Dl_info dlinfo;
+  bool found = false;
+
+  // Find in plugin directory
+  memset(&dlinfo, 0, sizeof(dlinfo));
+  if (dladdr(script_path, &dlinfo) != 0)
+  {
+    strncpy(script_path, dlinfo.dli_fname, PATH_MAX);
+    char *pos = strrchr(script_path, '/');
+    if (pos) {
+        strcpy(pos + 1, script_file);
+        found = (access(script_path, X_OK) == 0);
+    }
+  }
+  // Find in configuration directory
+  if (!found)
+  {
+    strcpy(script_path, dps->DefaultIniName);
+    char* pos = strrchr(script_path, '/');
+    if (pos != NULL) {
+        strcpy(pos + 1, script_file);
+        found = (access(script_path, X_OK) == 0);
+    }
+  }
+  // Find in $PATH
+  if (!found) strcpy(script_path, script_file);
+}
+
+void DCPCALL ListGetDetectString(char* DetectString, int maxlen)
+{
+    strncpy(DetectString, DETECT_STRING, maxlen);
+}
