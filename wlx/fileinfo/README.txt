@@ -1,4 +1,10 @@
-Установка
-скопировать fileinfo.sh в /usr/bin/
-установить в double commander плагин fileinfo.wlx указать детект строку
-(EXT="ISO")|(EXT="TORRENT")|(EXT="SO")|(EXT="MO")|(EXT="DEB")|(EXT="TAR")|(EXT="LHA")|(EXT="ARJ")|(EXT="CAB")|(EXT="HA")|(EXT="RAR")|(EXT="ALZ")|(EXT="CPIO")|(EXT="7Z")|(EXT="ACE")|(EXT="ARC")|(EXT="ZIP")|(EXT="ZOO")|(EXT="PS")|(EXT="PDF")|(EXT="ODT")|(EXT="DOC")|(EXT="XLS")|(EXT="DVI")|(EXT="DJVU")|(EXT="EPUB")|(EXT="HTML")|(EXT="HTM")
+Displays various information about file using command line utilities.
+
+Script "fileinfo.sh" must be in one of the directories:
+
+  1) Plugin directory
+  2) Double Commander configuration directory
+  3) PATH environment variable
+
+Supported file types: ISO, TORRENT, SO, MO, DEB, TAR, LHA, ARJ, CAB, HA, RAR,
+ALZ, CPIO, 7Z, ACE, ARC, ZIP, ZOO, PS, PDF, ODT, DOC, XLS, DVI, DJVU, EPUB, HTML, HTM
