@@ -83,6 +83,7 @@ HANDLE DCPCALL ListLoad (HANDLE ParentWin, char* FileToLoad, int ShowFlags)
 	gtk_container_add (GTK_CONTAINER (scroll), vp);
 	gtk_widget_show (vp);
 */	label = gtk_label_new(NULL);
+	gtk_misc_set_alignment(GTK_MISC(label), 0, 0);
         gtk_label_set_selectable (GTK_LABEL(label), TRUE);
 	gtk_label_set_line_wrap(GTK_LABEL(label), FALSE);
         gtk_widget_modify_font (label, pango_font_description_from_string ("Monospace 11"));
@@ -93,6 +94,7 @@ HANDLE DCPCALL ListLoad (HANDLE ParentWin, char* FileToLoad, int ShowFlags)
         gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (scroll),
                                   GTK_POLICY_AUTOMATIC,
                                   GTK_POLICY_AUTOMATIC);
+	gtk_widget_grab_focus(scroll);
 	gtk_widget_show (label);
 	free(buf1);
 /*--------------------------------------*/

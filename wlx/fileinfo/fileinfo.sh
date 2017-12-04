@@ -106,6 +106,9 @@ case "${filetype}" in
 	[Dd][Jj][Vv][Uu])
 		djvused -e print-pure-txt "$file"
 		;;
+	[Dd][Jj][Vv])
+		djvused -e print-pure-txt "$file"
+		;;
 	[Ee][Pp][Uu][Bb])
 		einfo -v "$file"
 		;;
