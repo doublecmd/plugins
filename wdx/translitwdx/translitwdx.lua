@@ -1,53 +1,56 @@
 -- translitwdx.lua
 -- Аналог wdx_Translit
--- 2017.10.12
+-- 2018.07.08
 -- Сохранить в UTF-8 без BOM
 
 --[[
-  url_decode()
-      http://lua-users.org/wiki/StringRecipes
-  rus_lat_calc_ru()
-  lat_rus_calc_ru()
-      Латинско-русский транслит https://www.calc.ru/ Без "Ъ" и "Ь"!
-  rus_lat_gost2000()
-  lat_rus_gost2000()
-      Транслитерация ГОСТ 7.79-2000 http://transliteration.ru/gost-7-79-2000/
-  rus_lat_zagranpasport()
-  lat_rus_zagranpasport()
-      Транслитерация имен для загранпаспорта РФ. http://transliteration.ru/mvd_1047/
-  rus_lat_mp3navig()
-  lat_rus_mp3navig()
-      Основа взята из программы MP3 Навигатор 2 by Иван Никитин
-      Корректировка таблицы: Павел Дубровский aka D1P
-  lat_rus_kolxo3()
-  rus_lat_kolxo3()
-      Латинско-русский транслит для названий книг из библиотеки Колхоза.
-      Автор - Сивцов Иван aka Melirius
-      Версия 1.0
-  rus_lat_sms()
-  lat_rus_sms()
-      Русско-латинская транслитная перекодировка для SMS-сообщений
-      Автор: Le
-  rus_lat_rint()
-  lat_rus_rint()
-      Транслитерация по системе РИНТ (Русский ИНТернет).
-      Система РИНТ (Русский + ИНТернет) представляет собой письменность русского языка на графической
-        основе латинского алфавита. Она предназначена для интернет-пользователей и способствует
-        распространению текстов на русском языке при отсутствии возможности использования русского
-        алфавита (кириллицы).
-      Автор: Павел Дубровский aka D1P
-  win1251_utf8()
-      WIN1251-UTF8 - таблица перекодировки для плагина wdx_Translit.
-      Vitaly Valitsky, 06.01.2005 v-tal@e-mail.ru
-  utf8_win1251()
-      UTF8-WIN1251 - таблица перекодировки для плагина wdx_Translit.
-      Vitaly Valitsky, 06.01.2005 v-tal@e-mail.ru
-  koi8r_win1251()
-      Перекодировщик из КОИ8 в WIN1251
-      Автор: Evil Angel ~ /random/+ [vinnica] (<= 2017.09.22)
-  dos866_win1251()
-      Таблица перекодировки DOS866 в WIN1251.
-      Автор: Павел Дубровский aka D1P
+Расширения файлов (т.е. всё после последней точки) исключаются из обработки (кроме "Windows naming conventions").
+
+Транслитерация:
+  Rus2Lat и Lat2Rus (ГОСТ 7_79-2000)
+    Транслитерация ГОСТ 7.79-2000 http://transliteration.ru/gost-7-79-2000/
+  Rus2Lat и Lat2Rus (Загранпаспорт РФ)
+    Транслитерация имен для загранпаспорта РФ. http://transliteration.ru/mvd_1047/
+  Rus2Lat и Lat2Rus (MP3 Навигатор 2)
+    Основа взята из программы MP3 Навигатор 2 by Иван Никитин
+    Корректировка таблицы: Павел Дубровский aka D1P
+  Rus2Lat и Lat2Rus (Колхоз)
+    Латинско-русский транслит для названий книг из библиотеки Колхоза. Версия 1.0
+    Автор: Сивцов Иван aka Melirius
+  Rus2Lat и Lat2Rus (calc.ru, без ЪЬ)
+    Латинско-русский транслит https://www.calc.ru/ Без "Ъ" и "Ь"!
+  Rus2Lat и Lat2Rus (SMS)
+    Русско-латинская транслитная перекодировка для SMS-сообщений
+    Автор: Le
+  Rus2Lat и Lat2Rus (РИНТ)
+    Транслитерация по системе РИНТ (Русский ИНТернет).
+    Система РИНТ (Русский + ИНТернет) представляет собой письменность русского языка на графической
+      основе латинского алфавита. Она предназначена для интернет-пользователей и способствует
+      распространению текстов на русском языке при отсутствии возможности использования русского
+      алфавита (кириллицы).
+    Автор: Павел Дубровский aka D1P
+
+Исправление имён файлов:
+  Windows naming conventions
+    Замена зарезервированных в ОС Windows символов в именах файлов (<, >, :, ", \, |, ?, *) на "_".
+  Diacritic to ASCII
+    Замена диакритики эквивалентами из ASCII (таблица из скрипта replaceDiacriticLetters.js для AkelPad)
+    Автор: Infocatcher
+  URL to Text
+    Исправление URL-кодирования (имена сохранённых веб-страниц, например): "%D0%9A%D0%BD%D0%B8%D0%B3%D0%B0" в "Книга"
+    http://lua-users.org/wiki/StringRecipes
+  Win1251 to UTF-8
+    Таблица перекодировки Win1251 в UTF-8.
+    Автор: Vitaly Valitsky, 06.01.2005 v-tal@e-mail.ru
+  UTF-8 to Win1251
+    Таблица перекодировки UTF-8 в Win1251.
+    Автор: Vitaly Valitsky, 06.01.2005 v-tal@e-mail.ru
+  KOI8-R to Win1251
+    Таблица перекодировки KOI8R в Win1251
+    Автор: Evil Angel ~ /random/+ [vinnica] (<= 2017.09.22)
+  OEM866 to Win1251
+    Таблица перекодировки DOS866 в WIN1251.
+    Автор: Павел Дубровский aka D1P
 ]]
 
 function ContentGetSupportedField(Index)
@@ -80,14 +83,18 @@ function ContentGetSupportedField(Index)
   elseif (Index == 13) then
     return 'Lat2Rus (РИНТ)','', 8;
   elseif (Index == 14) then
-    return 'URL to Text','', 8;
+    return 'Windows naming conventions','', 8;
   elseif (Index == 15) then
-    return 'Win1251 to UTF8','', 8;
+    return 'Diacritic to ASCII','', 8;
   elseif (Index == 16) then
-    return 'UTF-8 to Win1251','', 8;
+    return 'URL to Text','', 8;
   elseif (Index == 17) then
-    return 'KOI8R to Win1251','', 8;
+    return 'Win1251 to UTF-8','', 8;
   elseif (Index == 18) then
+    return 'UTF-8 to Win1251','', 8;
+  elseif (Index == 19) then
+    return 'KOI8-R to Win1251','', 8;
+  elseif (Index == 20) then
     return 'OEM866 to Win1251','', 8;
   end
   return '','', 0; -- ft_nomorefields
@@ -98,21 +105,28 @@ function ContentGetDetectString()
 end
 
 function ContentGetValue(FileName, FieldIndex, UnitIndex, flags)
-  local n, s
+  local a, n, s, t
   -- Исключаем вывод для диалога свойств (CONTENT_DELAYIFSLOW)
   if (flags == 1) then
     return nil;
   end
-  -- Разделитель каталогов
-  if (string.find(FileName, "/", 1, true) == nil) then
-    s = "\\"; -- Win
-  else
+  if (SysUtils.PathDelim == "/") then
     s = "/"; -- Linux
+  else
+    s = "\\"; -- Win
   end
   if (string.sub(FileName, -3) == s .. "..") or (string.sub(FileName, -2) == s .. ".") then
     return nil;
   end
   n = string.match(FileName, s .. "([^" .. s .. "]+)$");
+  -- Исключаются из обработки расширения файлов, т.е. всё после последней точки, (кроме "Windows naming conventions").
+  a = SysUtils.FileGetAttr(FileName);
+  if (a > 0) then
+    if not (math.floor(a / 0x00000010) % 2 ~= 0) then
+      t = string.gsub(n, "%.[^%.]+$", "");
+      if (string.len(t) > 0) and (FieldIndex ~= 14) then n = t end;
+    end
+  end
   if (FieldIndex == 0) then
     return rus_lat_gost2000(n);
   elseif (FieldIndex == 1) then
@@ -142,23 +156,39 @@ function ContentGetValue(FileName, FieldIndex, UnitIndex, flags)
   elseif (FieldIndex == 13) then
     return lat_rus_rint(n);
   elseif (FieldIndex == 14) then
-    return url_decode(n);
+    return win_name(n);
   elseif (FieldIndex == 15) then
-    return win1251_utf8(n);
+    return diacritic_ascii(n);
   elseif (FieldIndex == 16) then
-    return utf8_win1251(n);
+    return url_decode(n);
   elseif (FieldIndex == 17) then
-    return koi8r_win1251(n);
+    return win1251_utf8(n);
   elseif (FieldIndex == 18) then
+    return utf8_win1251(n);
+  elseif (FieldIndex == 19) then
+    return koi8r_win1251(n);
+  elseif (FieldIndex == 20) then
     return dos866_win1251(n);
   end
   return nil;
+end
+
+function win_name(str)
+  return string.gsub(str, '[<>:"|\\%?%*]', "_");
 end
 
 function url_decode(str)
   str = string.gsub(str, "+", " ");
   str = string.gsub(str, "%%(%x%x)",
       function(h) return string.char(tonumber(h,16)) end)
+  return str;
+end
+
+function diacritic_ascii(str)
+  local t = {["À"]="A", ["à"]="a", ["á"]="a", ["Á"]="A", ["Â"]="A", ["â"]="a", ["Ã"]="A", ["ã"]="a", ["ä"]="a", ["Ä"]="A", ["å"]="a", ["Å"]="A", ["Æ"]="AE", ["æ"]="ae", ["ç"]="c", ["Ç"]="C", ["È"]="E", ["è"]="e", ["É"]="E", ["é"]="e", ["Ê"]="E", ["ê"]="e", ["ë"]="e", ["Ë"]="E", ["ì"]="i", ["Ì"]="I", ["Í"]="I", ["í"]="i", ["î"]="i", ["Î"]="I", ["ï"]="i", ["Ï"]="I", ["ð"]="d", ["Ð"]="D", ["ñ"]="n", ["Ñ"]="N", ["Ò"]="O", ["ò"]="o", ["ó"]="o", ["ó"]="o", ["Ó"]="O", ["Ó"]="O", ["ô"]="o", ["Ô"]="O", ["õ"]="o", ["Õ"]="O", ["ö"]="o", ["Ö"]="O", ["Ù"]="U", ["ù"]="u", ["ú"]="u", ["Ú"]="U", ["û"]="u", ["Û"]="U", ["ü"]="u", ["Ü"]="U", ["Ý"]="Y", ["ý"]="y", ["ÿ"]="y", ["Ÿ"]="Y", ["ā"]="a", ["Ā"]="A", ["Ă"]="A", ["ă"]="a", ["ą"]="a", ["Ą"]="A", ["ą"]="a", ["Ą"]="A", ["ć"]="c", ["Ć"]="C", ["Ć"]="C", ["ć"]="c", ["ĉ"]="c", ["Ĉ"]="C", ["ċ"]="c", ["Ċ"]="C", ["č"]="c", ["Č"]="C", ["Ď"]="D", ["ď"]="d", ["đ"]="d", ["Đ"]="D", ["Ē"]="E", ["ē"]="e", ["ĕ"]="e", ["Ĕ"]="E", ["ė"]="e", ["Ė"]="E", ["Ę"]="E", ["ę"]="e", ["ę"]="e", ["Ę"]="E", ["ě"]="e", ["Ě"]="E", ["ĝ"]="g", ["Ĝ"]="G", ["ğ"]="g", ["Ğ"]="G", ["Ġ"]="G", ["ġ"]="g", ["ģ"]="g", ["Ģ"]="G", ["Ĥ"]="H", ["ĥ"]="h", ["Ħ"]="H", ["ħ"]="h", ["ĩ"]="i", ["Ĩ"]="I", ["Ī"]="I", ["ī"]="i", ["Ĭ"]="I", ["ĭ"]="i", ["Į"]="I", ["į"]="i", ["İ"]="I", ["ı"]="i", ["Ĳ"]="IJ", ["ĳ"]="ij", ["Ĵ"]="J", ["ĵ"]="j", ["ķ"]="k", ["Ķ"]="K", ["ĸ"]="k", ["Ĺ"]="L", ["ĺ"]="l", ["Ļ"]="L", ["ļ"]="l", ["Ľ"]="L", ["ľ"]="l", ["Ŀ"]="L", ["ŀ"]="l", ["ł"]="l", ["ł"]="l", ["Ł"]="L", ["Ł"]="L", ["ń"]="n", ["Ń"]="N", ["ń"]="n", ["Ń"]="N", ["ņ"]="n", ["Ņ"]="N", ["Ň"]="N", ["ň"]="n", ["ŉ"]="n", ["ō"]="o", ["Ō"]="O", ["Ŏ"]="O", ["ŏ"]="o", ["ő"]="o", ["Ő"]="O", ["Œ"]="OE", ["œ"]="oe", ["Ŕ"]="R", ["ŕ"]="r", ["ŗ"]="r", ["Ŗ"]="R", ["Ř"]="R", ["ř"]="r", ["Ś"]="S", ["ś"]="s", ["ś"]="s", ["Ś"]="S", ["ŝ"]="s", ["Ŝ"]="S", ["ş"]="s", ["Ş"]="S", ["Š"]="S", ["š"]="s", ["ţ"]="t", ["Ţ"]="T", ["Ť"]="T", ["ť"]="t", ["ŧ"]="t", ["Ŧ"]="T", ["ũ"]="u", ["Ũ"]="U", ["ū"]="u", ["Ū"]="U", ["ŭ"]="u", ["Ŭ"]="U", ["ů"]="u", ["Ů"]="U", ["ű"]="u", ["Ű"]="U", ["Ų"]="U", ["ų"]="u", ["ŵ"]="w", ["Ŵ"]="W", ["Ŷ"]="Y", ["ŷ"]="Y", ["ź"]="z", ["Ź"]="Z", ["ź"]="z", ["Ź"]="Z", ["ż"]="z", ["Ż"]="Z", ["Ż"]="Z", ["ż"]="z", ["ž"]="z", ["Ž"]="Z", ["ƀ"]="b", ["ƈ"]="c", ["Ƈ"]="C", ["ƒ"]="f", ["Ƒ"]="F", ["ƙ"]="k", ["Ƙ"]="K", ["ơ"]="o", ["Ơ"]="O", ["ƥ"]="p", ["Ƥ"]="P", ["Ʀ"]="R", ["ƫ"]="t", ["ƭ"]="t", ["Ƭ"]="T", ["ư"]="u", ["Ư"]="U", ["Ƶ"]="Z", ["ƶ"]="z", ["ǅ"]="Dz", ["Ǆ"]="DZ", ["ǆ"]="dz", ["ǈ"]="Lj", ["Ǉ"]="LJ", ["ǉ"]="lj", ["ǋ"]="Nj", ["ǌ"]="nj", ["Ǌ"]="NJ", ["Ǎ"]="A", ["ǎ"]="a", ["Ǐ"]="I", ["ǐ"]="i", ["ǒ"]="o", ["Ǒ"]="O", ["ǔ"]="u", ["Ǔ"]="U", ["Ǖ"]="U", ["ǖ"]="u", ["ǘ"]="u", ["Ǘ"]="U", ["ǚ"]="u", ["Ǚ"]="U", ["ǜ"]="u", ["Ǜ"]="U", ["ǝ"]="e", ["Ǟ"]="A", ["ǟ"]="a", ["Ǡ"]="A", ["ǡ"]="a", ["ǣ"]="ae", ["Ǣ"]="AE", ["ǥ"]="g", ["Ǥ"]="G", ["Ǧ"]="G", ["ǧ"]="g", ["ǩ"]="k", ["Ǩ"]="K", ["Ǫ"]="O", ["ǫ"]="o", ["Ǭ"]="O", ["ǭ"]="o", ["ǯ"]="z", ["Ǯ"]="Z", ["ǰ"]="J", ["ǲ"]="Dz", ["ǳ"]="dz", ["Ǳ"]="DZ", ["Ǵ"]="G", ["ǵ"]="g", ["ǻ"]="a", ["Ǻ"]="A", ["Ǽ"]="AE", ["ǽ"]="ae", ["Ǿ"]="O", ["ǿ"]="o", ["ȁ"]="a", ["Ȁ"]="A", ["Ȃ"]="A", ["ȃ"]="a", ["ȅ"]="e", ["Ȅ"]="E", ["Ȇ"]="E", ["ȇ"]="e", ["ȉ"]="i", ["Ȉ"]="I", ["ȋ"]="i", ["Ȋ"]="I", ["ȍ"]="o", ["Ȍ"]="O", ["Ȏ"]="O", ["ȏ"]="o", ["Ȑ"]="R", ["ȑ"]="r", ["Ȓ"]="R", ["ȓ"]="r", ["Ȕ"]="U", ["ȕ"]="u", ["Ȗ"]="U", ["ȗ"]="u", ["ɐ"]="a", ["ɑ"]="a", ["ɒ"]="a", ["Ɓ"]="B", ["Ɖ"]="D", ["ɖ"]="d", ["Ɗ"]="D", ["ɗ"]="d", ["ɛ"]="e", ["Ɠ"]="G", ["Ʈ"]="T", ["ʣ"]="dz", ["ʤ"]="dz", ["ʥ"]="dz", ["ʦ"]="ts", ["ʧ"]="tf", ["ΐ"]="i", ["Ά"]="A", ["Έ"]="E", ["Ή"]="H", ["Ί"]="I", ["ϊ"]="i", ["ϋ"]="u", ["ό"]="o", ["Ό"]="O", ["ύ"]="u", ["Ύ"]="Y", ["і"]="i", ["ї"]="i", ["ј"]="j", ["ќ"]="k", ["ў"]="y", ["ӑ"]="a", ["Ӑ"]="A", ["ӓ"]="a", ["Ӓ"]="A", ["Ӕ"]="AE", ["ӕ"]="ae", ["ӗ"]="e", ["Ӗ"]="E"}
+  for key, val in pairs(t) do
+    str = string.gsub(str, key, val);
+  end
   return str;
 end
 
