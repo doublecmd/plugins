@@ -39,9 +39,9 @@ install -m 644 wdx/similarity/leven.ini      release/wdx/similarity/
 install -m 644 wdx/similarity/readme.txt     release/wdx/similarity/
 
 wlx/fileinfo/build.sh
-install -m 644 wlx/fileinfo/fileinfo.wlx release/wlx/fileinfo/
-install -m 755 wlx/fileinfo/fileinfo.sh  release/wlx/fileinfo/
-install -m 755 wlx/fileinfo/*.txt        release/wlx/fileinfo/
+install -m 644 wlx/fileinfo/fileinfo.wlx* release/wlx/fileinfo/
+install -m 755 wlx/fileinfo/fileinfo.sh   release/wlx/fileinfo/
+install -m 644 wlx/fileinfo/*.txt         release/wlx/fileinfo/
 
 install -m 644 wdx/mediainfo/luajit/*.lua      release/wdx/mediainfo/
 install -m 644 wdx/translitwdx/translitwdx.lua release/wdx/translitwdx/
