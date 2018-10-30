@@ -48,5 +48,5 @@ install -m 644 wdx/translitwdx/translitwdx.lua release/wdx/translitwdx/
 install -m 644 wdx/translitwdx/readme.txt      release/wdx/translitwdx/
 
 pushd release
-tar -czpf ../plugins-$ARCH.tar.gz *
+tar -czpf ../plugins-$(date +%y.%m.%d)-$ARCH.tar.gz *
 popd
