@@ -27,6 +27,7 @@ install -m 644 wdx/exif/*.txt    release/wdx/exif/
 
 lazbuild wdx/ooinfo/src/OOInfo.lpi
 install -m 644 wdx/ooinfo/ooinfo.wdx release/wdx/ooinfo/
+install -m 644 wdx/ooinfo/ooinfo.lng release/wdx/ooinfo/
 install -m 644 wdx/ooinfo/*.txt      release/wdx/ooinfo/
 
 make -C wdx/ooxml/src

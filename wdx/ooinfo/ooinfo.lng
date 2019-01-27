@@ -1,0 +1,128 @@
+; Send new or updated translation to: atorg@yandex.ru
+; Don't forget "Description" line in pluginst.inf
+
+[Rus]
+Generator=Ïğîãğàììà
+Title=Çàãîëîâîê
+Description=Îïèñàíèå
+Subject=Òåìà
+Initial creator=Íà÷àëüíûé ñîçäàòåëü
+Creator=Ñîçäàòåëü
+Creation date=Äàòà ñîçäàíèÿ
+Modification date=Äàòà èçìåíåíèÿ
+Keywords=Êëş÷åâûå ñëîâà
+Language=ßçûê
+User info 1=Ïîëå ïîëüçîâàòåëÿ 1
+User info 2=Ïîëå ïîëüçîâàòåëÿ 2
+User info 3=Ïîëå ïîëüçîâàòåëÿ 3
+User info 4=Ïîëå ïîëüçîâàòåëÿ 4
+URL=Ññûëêà
+Print date=Äàòà ïå÷àòè
+Printed by=Êòî ïå÷àòàë
+Edition time=Âğåìÿ ïğàâêè
+Edition cycles=×èñëî ïğàâîê
+Statistics=Ñòàòèñòèêà
+Text=Òåêñò
+Tables|Images|Objects|Pages|Paragraphs|Words|Characters|Cells=Òàáëèöû|Êàğòèíêè|Îáúåêòû|Ñòğàíèöû|Àáçàöû|Ñëîâà|Ñèìâîëû|ß÷åéêè
+
+; German translation
+; Kurt <k.lettmaier@onlinehome.de>
+[Deu]
+Generator=Erzeugt von
+Title=Titel
+Description=Beschreibung
+Subject=Betreff
+Initial creator=Erstersteller
+Creator=Ersteller
+Creation date=Erstellt am
+Modification date=Geändert am
+Keywords=Schlüsselwörter
+Language=Sprache
+User info 1=Nutzerinfo 1
+User info 2=Nutzerinfo 2
+User info 3=Nutzerinfo 3
+User info 4=Nutzerinfo 4
+URL=URL
+Print date=Gedruckt am
+Printed by=Gedruckt von
+Edition time=Erschienen am
+Edition cycles=Editionszyklen
+Statistics=Statistik
+Text=Text
+Tables|Images|Objects|Pages|Paragraphs|Words|Characters|Cells=Tabelle|Bilder|Objekte|Seiten|Paragraphen|Wörter|Zeichen|Zellen
+
+; Dariusz J. Kawecki <djk@totalcmd.pl>
+[Pol]
+Generator=Program
+Title=Tytu³
+Description=Opis
+Subject=Temat
+Initial creator=Autor
+Creator=Zmodyfikowa³
+Creation date=Data utworzenia
+Modification date=Data modyfikacji
+Keywords=S³owa kluczowe
+Language=Jêzyk
+User info 1=Informacja u¿ytkownika 1
+User info 2=Informacja u¿ytkownika 2
+User info 3=Informacja u¿ytkownika 3
+User info 4=Informacja u¿ytkownika 4
+URL=URL
+Print date=Data drukowania
+Printed by=Drukowane przez
+Edition time=Czas edycji
+Edition cycles=Liczba edycji
+Statistics=Statystyka
+Text=Tekst
+Tables|Images|Objects|Pages|Paragraphs|Words|Characters|Cells=Tabele|Obrazy|Objekty|Strony|Akapity|S³owa|Znaki|Komórki
+
+[Hun]
+; hungarian translation
+; DirektX@freemail.hu
+Generator=Létrehozó alkalmazás
+Title=Cím
+Description=Leírás
+Subject=Tárgy
+Initial creator=Eredeti szerzõ
+Creator=Szerzõ
+Creation date=Kelt
+Modification date=Módosítva
+Keywords=Kulcsszavak
+Language=Nyelv
+User info 1=Info 1
+User info 2=Info 2
+User info 3=Info 3
+User info 4=Info 4
+URL=URL
+Print date=Utolsó nyomtatás
+Printed by=Nyomtatta
+Edition time=Szerkesztés ideje
+Edition cycles=Szerkesztési ciklusok
+Statistics=Statisztika
+Text=Szöveg
+Tables|Images|Objects|Pages|Paragraphs|Words|Characters|Cells=Táblázatok|Képek|Objektumok|Oldalak|Bekezdések|Szavak|Karakterek|Cellák
+
+[Esp]
+; Spanish translation. JMB (sombra)  totalcmd@breto.net
+Generator=Generador
+Title=Título
+Description=Descripción
+Subject=Asunto
+Initial creator=Autor inicial
+Creator=Autor
+Creation date=Fecha de creación
+Modification date=Fecha de modificación
+Keywords=Palabras clave
+Language=Idioma
+User info 1=Información usuario 1
+User info 2=Información usuario 2
+User info 3=Información usuario 3
+User info 4=Información usuario 4
+URL=URL
+Print date=Fecha de impresión
+Printed by=Imprimido por
+Edition time=Tiempo de edición
+Edition cycles=Nº de ediciones
+Statistics=Estadísticas
+Text=Texto
+Tables|Images|Objects|Pages|Paragraphs|Words|Characters|Cells=Tablas|Imágenes|Objetos|Páginas|Párrafos|Palabras|Carácteres|Celdas
