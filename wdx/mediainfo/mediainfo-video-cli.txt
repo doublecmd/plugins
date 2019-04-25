@@ -1,0 +1,64 @@
+mediainfo-video-cli.lua
+2019.04.30
+
+Get some technical information about video files.
+
+1. Requeres
+
+- Double Commander :) ;
+- Lua library;
+- MediaInfo (http://mediaarea.net/MediaInfo), CLI version.
+
+2. Fields
+
+General: Title
+General: Format
+General: Duration ms
+General: Duration HH:MM:SS
+General: Duration HH:MM:SS.MMM
+General: Overall bit rate
+General: Overall bit rate, auto Bps/KBps/MBps
+General: Count of streams
+General: Number of audio streams
+General: Number of text streams
+General: Number of image streams
+General: Number of menu streams
+Video: Format
+Video: Format profile
+Video: Codec ID
+Video: Streamsize in bytes
+Video: Bit rate
+Video: Bit rate, auto Bps/KBps/MBps
+Video: Width
+Video: Height
+Video: Width x Height
+Video: Display Aspect ratio
+Video: DisplayAspectRatio (string)
+Video: Pixel Aspect ratio
+Video: Frame rate mode
+Video: Frame rate
+Video: Number of frames
+Video: Bits/(Pixel*Frame)
+Video: Rotation
+Audio: Format
+Audio: Format profile
+Audio: Codec ID
+Audio: Streamsize in bytes
+Audio: Bit rate
+Audio: Bit rate, auto Bps/KBps/MBps
+Audio: Bit rate mode
+Audio: Channel(s)
+Audio: Sampling rate, KHz
+Audio: Bit depth
+Audio: Delay in the stream
+Audio: Title
+Audio: Language
+General:
+Video:
+Audio:
+
+NOTE: Fields 
+  "General:" (Duration HH:MM:SS, Overall bit rate)
+  "Video:" (Format, Bit rate, Width x Height, Frame rate)
+  "Audio:" (Format, Bit rate, Sampling rate, Bit depth, Channel(s))
+for File Properties dialog (tab "Plugins", Linux only).

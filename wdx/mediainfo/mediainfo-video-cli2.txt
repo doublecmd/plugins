@@ -1,0 +1,9 @@
+mediainfo-video-cli2.lua
+2019.04.30
+
+Get some technical information about video files.
+
+Uses CLI-version of MediaInfo (as mediainfo-video.lua), but:
+- In some cases this version will be more faster (if you want to use 3 or more fields);
+- In some cases this version will be more slower (if you want to use searching with plugin and 1 or 2 fields);
+- Fields "Video: Width x Height", "General:", "Video:" and "Audio:" have been removed, because they are not needed in this version.
