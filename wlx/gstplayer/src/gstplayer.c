@@ -407,6 +407,23 @@ void DCPCALL ListCloseWindow(HWND ListWin)
   g_free(data);
 }
 
+int DCPCALL ListLoadNext(HWND ParentWin, HWND PluginWin, char* FileToLoad, int ShowFlags)
+{
+  gchar *fileUri;
+  CustomData *data;
+  GstStateChangeReturn ret;
+
+  data = (CustomData *)g_object_get_data(G_OBJECT(PluginWin), "custom-data");
+  gst_element_set_state (data->playbin, GST_STATE_READY);
+
+  fileUri = g_filename_to_uri(FileToLoad, NULL, NULL);
+  g_object_set (data->playbin, "uri", fileUri, NULL);
+  if (fileUri) g_free(fileUri);
+
+  ret = gst_element_set_state (data->playbin, GST_STATE_PLAYING);
+  return (ret != GST_STATE_CHANGE_FAILURE) ? (LISTPLUGIN_OK) : (LISTPLUGIN_ERROR);
+}
+
 void DCPCALL ListGetDetectString(char* DetectString, int maxlen)
 {
   g_strlcpy(DetectString, DETECT_STRING, maxlen - 1);
