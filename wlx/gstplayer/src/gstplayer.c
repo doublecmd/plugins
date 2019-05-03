@@ -114,7 +114,7 @@ static GtkWidget *create_ui (HWND ParentWin, CustomData *data) {
   GtkWidget *controls;     /* HBox to hold the buttons and the slider */
   GtkWidget *play_button, *pause_button, *stop_button; /* Buttons */
 
-  main_window = gtk_scrolled_window_new(NULL, NULL);
+  main_window = gtk_vbox_new (FALSE, 0);
   gtk_container_add(GTK_CONTAINER((GtkWidget *)(ParentWin)), main_window);
   g_signal_connect (G_OBJECT (main_window), "delete-event", G_CALLBACK (delete_event_cb), data);
 
@@ -153,7 +153,6 @@ static GtkWidget *create_ui (HWND ParentWin, CustomData *data) {
   gtk_box_pack_start (GTK_BOX (main_box), main_hbox, TRUE, TRUE, 0);
   gtk_box_pack_start (GTK_BOX (main_box), controls, FALSE, FALSE, 0);
   gtk_container_add (GTK_CONTAINER (main_window), main_box);
-  gtk_window_set_default_size (GTK_WINDOW (main_window), 640, 480);
 
   gtk_widget_show_all (main_window);
 
