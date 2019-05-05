@@ -1,0 +1,86 @@
+mediainfo-video.lua
+2019.04.30
+
+Get some technical information about video files. Cross-platform.
+
+1. Requeres
+
+- Double Commander :) ;
+- Lua library from LuaJIT project;
+- ffi-mediaInfo.lua must be near mediainfo-video.lua;
+- MediaInfo DLL (MediaInfo.dll or libmediainfo.so.0).
+
+LuaJIT:
+- Windows:
+  replace lua5.1.dll
+  http://doublecmd.sourceforge.net/test/luajit_win32.zip for 32-bit version of DC,
+  http://doublecmd.sourceforge.net/test/luajit_win64.zip for 64-bit version of DC
+  (thanks for the binary files to Alexander Koblov aka Alexx2000).
+- Linux:
+  1) find LuaJIT package, for example: "libluajit-5.1-2" (Debian/Ubuntu and Debian/Ubuntu-based), "luajit" (Arch Linux). Or compile it.
+  2) close DC, open config file doublecmd.xml and change option <PathToLibrary>.
+  Example on Ubuntu:
+  1) in terminal: sudo apt-get install libluajit-5.1-2
+  2) edit doublecmd.xml:
+     <Lua>
+       <PathToLibrary>libluajit-5.1.so.2</PathToLibrary>
+     </Lua>
+
+MediaInfo (http://mediaarea.net/MediaInfo):
+- Windows:
+  MediaInfo.dll must be near DC executable file or in PATH.
+- Linux:
+  find or compile MediaInfo. For example: "libmediainfo0v5" (Debian/Ubuntu and Debian/Ubuntu-based), "libmediainfo" (Arch Linux).
+
+2. Fields
+
+General: Title
+General: Format
+General: Duration ms
+General: Duration HH:MM:SS
+General: Duration HH:MM:SS.MMM
+General: Overall bit rate
+General: Overall bit rate, auto Bps/KBps/MBps
+General: Count of streams
+General: Number of audio streams
+General: Number of text streams
+General: Number of image streams
+General: Number of menu streams
+Video: Format
+Video: Format profile
+Video: Codec ID
+Video: Streamsize in bytes
+Video: Bit rate
+Video: Bit rate, auto Bps/KBps/MBps
+Video: Width
+Video: Height
+Video: Display aspect ratio
+Video: Display aspect ratio (string)
+Video: Pixel aspect ratio
+Video: Frame rate mode
+Video: Frame rate
+Video: Number of frames
+Video: Bits/(Pixel*Frame)
+Video: Rotation
+Audio: Format
+Audio: Format profile
+Audio: Codec ID
+Audio: Streamsize in bytes
+Audio: Bit rate
+Audio: Bit rate, auto Bps/KBps/MBps
+Audio: Bit rate mode
+Audio: Channel(s)
+Audio: Sampling rate, KHz
+Audio: Bit depth
+Audio: Delay in the stream
+Audio: Title
+Audio: Language
+
+3. History
+
+2017.10.05 - First release.
+2019.04.01 - ADD: Title, Format profile, audio support (by Dobrov)
+2019.04.12 - FIX: Count of fields and parameters. DEL: Field "Video: Width x Height". CHG: Add table of fields, some checks, other.
+2019.04.27 - UPD: Adding new fields is easier.
+2019.04.28 - ADD: Video: Bits/(Pixel*Frame)
+2019.04.30 - DEL: Field "General: MIME/Content-Type".

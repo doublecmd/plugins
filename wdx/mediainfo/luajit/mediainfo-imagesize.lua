@@ -1,91 +1,72 @@
 -- mediainfo-imagesize.lua
--- WDX, for columns set / search
--- 2017.10.05
+-- 2019.04.25
 --
--- Script will return image size (pixels).
+-- Get image size (width and height, pixels).
+-- Fields: "Width","Height" and "Width x Height"
 --
--- LuaJIT, "MediaInfo.dll" or "libmediainfo.so.0" is used.
---
--- Install LuaJIT:
---   - on Windows: replace lua5.1.dll on lua5.1.dll from LuaJIT Project;
---       download DDL here https://doublecmd.sourceforge.io/forum/viewtopic.php?f=8&t=3615
---   - on Linux:
---       1) install or compile libluajit-5.1 for your OS;
---       2) close DC, open config file doublecmd.xml and change option <PathToLibrary>;
---       Example on Ubuntu:
---         1) in terminal:
---           sudo apt-get install libluajit-5.1-2
---         2) edit doublecmd.xml:
---           <Lua>
---             <PathToLibrary>libluajit-5.1.so.2</PathToLibrary>
---           </Lua>
+-- How to use LuaJIT and MediaInfo: see mediainfo-video.txt
 
---====================================================================
+--========================================
 local ffi = require("ffi")
-local mediaInfo = require("ffi-mediaInfo");
---====================================================================
+local mediaInfo = require("ffi-mediaInfo")
+--========================================
 
 local mi = nil
-
 local par_name = {
-  "Image;%Width%",
-  "Image;%Height%"
+ "Image;%Width%",
+ "Image;%Height%"
 }
-
 local res = {}
 local filename = ""
 
 function ContentSetDefaultParams(IniFileName, PlugApiVerHi, PlugApiVerLow)
-  -- create MediaInfo Instance
-  mi = mediaInfo.MediaInfoA_New();
+  -- Create MediaInfo Instance
+  mi = mediaInfo.MediaInfoA_New()
 end
 
 function ContentPluginUnloading()
-  -- delete MediaInto instance
-  mediaInfo.MediaInfoA_Delete(mi);
+  -- Delete MediaInto instance
+  mediaInfo.MediaInfoA_Delete(mi)
 end
 
-function ContentGetSupportedField(Index)
-  if (Index == 0) then
-    return "Width","", 2; -- FieldName,Units,ft_numeric_64
-  elseif (Index == 1) then
-    return "Height","", 2;
+function ContentGetSupportedField(FieldIndex)
+  if FieldIndex == 0 then
+    return "Width", "", 2; -- FieldName,Units,ft_numeric_64
+  elseif FieldIndex == 1 then
+    return "Height", "", 2
+  elseif FieldIndex == 2 then
+    return "Width x Height", "", 8; -- FieldName,Units,ft_string
   end
-  return "","", 0;
+  return "", "", 0
 end
 
 function ContentGetDetectString()
-  return '(EXT="BMP") | (EXT="GIF") | (EXT="JFIF") | (EXT="JP2") | (EXT="JPE") | (EXT="JPEG") | (EXT="JPG") | (EXT="PNG") | (EXT="PSD") | (EXT="TGA") | (EXT="TIF") | (EXT="TIFF")';
+  return '(EXT="BMP")|(EXT="GIF")|(EXT="JFIF")|(EXT="JP2")|(EXT="JPE")|(EXT="JPEG")|(EXT="JPG")|(EXT="PNG")|(EXT="PSD")|(EXT="TGA")|(EXT="TIF")|(EXT="TIFF")'
 end
 
 function ContentGetValue(FileName, FieldIndex, UnitIndex, flags)
-  if (string.find(FileName, "/", 1, true) == nil) then
-    -- Win
-    if (string.sub(FileName, -3) == "\\..") or (string.sub(FileName, -2) == "\\.") then
-      return nil;
+  if FieldIndex > 2 then return nil end
+  local t = string.sub(FileName, string.len(FileName) - 3, -1)
+  if (t == "/..") or (t == "\\..") then return nil end
+  t = string.sub(t, 2, -1)
+  if (t == "/.") or (t == "\\.") then return nil end
+  if filename ~= FileName then
+    -- Open target File
+    mediaInfo.MediaInfoA_Open(mi, FileName)
+    for i = 1, 2 do
+      -- Set option
+      mediaInfo.MediaInfoA_Option(mi, "Inform", par_name[i])
+      -- Get propety
+      res[i] = ffi.string(mediaInfo.MediaInfoA_Inform(mi, 0))
     end
+    -- Close
+    mediaInfo.MediaInfoA_Close(mi)
+    filename = FileName
+  end
+  if FieldIndex == 2 then
+    return res[1] .. "x" .. res[2]
   else
-    -- Linux
-    if (string.sub(FileName, -3) == "/..") or (string.sub(FileName, -2) == "/.") then
-      return nil;
-    end
+    return res[FieldIndex + 1]
   end
-  if (FieldIndex > 1 ) then
-    return nil;
-  end
-  if (filename ~= FileName) then
-    -- open target File
-    mediaInfo.MediaInfoA_Open (mi, FileName);
-    for i=1, 2 do
-      -- set option
-      mediaInfo.MediaInfoA_Option(mi, "Inform", par_name[i]);
-      -- get propety
-      res[i] = ffi.string(mediaInfo.MediaInfoA_Inform(mi, 0));
-    end
-    -- close
-    mediaInfo.MediaInfoA_Close (mi);
-    filename = FileName;
-  end
-  result = res[FieldIndex+1];
-  return string.gsub(result, "[\r\n]+", "");
+  return nil
 end
