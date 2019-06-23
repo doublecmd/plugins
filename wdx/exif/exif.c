@@ -16,17 +16,19 @@
 #define INVALID_HANDLE_VALUE -1
 #define min(a, b) (((a) < (b)) ? (a) : (b))
 
+#define COUNTOF(x) sizeof(x)/sizeof(x[0])
+
 #define _detectstring "(EXT=\"JPG\") | (EXT=\"JPEG\") | (EXT=\"TIFF\") | (EXT=\"TIF\") | (EXT=\"JPE\") | (EXT=\"CRW\") | (EXT=\"THM\") | (EXT=\"CR2\") | (EXT=\"DNG\") | (EXT=\"NEF\")"
 
 BOOL ParseTiffFile(int f,char* data,int datalen,int TagNeeded,int TagNeeded2,int FormatNeeded,int FieldIndex, void* FieldValue,int maxlen,BOOL unicode,int UnitIndex);
 
-#define fieldcount 76
+#define fieldcount 78
 
-#define canon_start 48
-#define canon_end 70
+#define canon_start 50
+#define canon_end 72
 
-#define gps_start 71
-#define gps_end 75
+#define gps_start 73
+#define gps_end 77
 
 char* fieldnames[fieldcount]={"Width","Height","BitsPerSample","DateTimeStr",
 	"Date","Time","DateOriginal","TimeOriginal","DateDigitized","TimeDigitized",
@@ -38,6 +40,8 @@ char* fieldnames[fieldcount]={"Width","Height","BitsPerSample","DateTimeStr",
 	"ImageDescription","UserComment","XResolution","YResolution","ResolutionUnit","Software","Artist",
 	"ShutterSpeed","YCbCrPositioning","SensingMethod","ExposureMode","WhiteBalance","DigitalZoomRatio",
 	"FocalLengthIn35mmFilm","SceneCaptureType","GainControl","Contrast","Saturation","Sharpness","SubjectDistanceRange",
+	// Added values after version 2.5
+	"Compression","CompressionName",
 	// Canon MakerNote Fields
 	"Canon Macro mode","Canon Flash mode","Canon Continuous drive mode",
 	"Canon Focus Mode","Canon Image size","Canon Easy shooting mode","Canon Digital Zoom",
@@ -58,6 +62,8 @@ int fieldtypes[fieldcount]={ft_numeric_32,ft_numeric_32,ft_numeric_32,ft_string,
 	ft_string,ft_string,ft_numeric_floating,ft_numeric_floating,ft_multiplechoice,ft_string,ft_string,
 	ft_string,ft_multiplechoice,ft_multiplechoice,ft_multiplechoice,ft_multiplechoice,ft_numeric_floating,
 	ft_numeric_32,ft_multiplechoice,ft_multiplechoice,ft_multiplechoice,ft_multiplechoice,ft_multiplechoice,ft_multiplechoice,
+	// Added values after version 2.5
+	ft_numeric_32,ft_multiplechoice,
 	// Canon MakerNote Fields
 	ft_multiplechoice,ft_multiplechoice,ft_multiplechoice,
 	ft_multiplechoice,ft_multiplechoice,ft_multiplechoice,ft_multiplechoice,
@@ -78,6 +84,8 @@ int tagtable[fieldcount]={0xA002,0xA003,0x102,0x132,
 	0x010E,0x9286,0x11A,0x11B,0x128,0x131,0x13B,
 	0x9201,0x213,0xA217,0xA402,0xA403,0xA404,
 	0xA405,0xA406,0xA407,0xA408,0xA409,0xA40A,0xA40C,
+	// Added values after version 2.5
+	0x103,0x103,
 	// Canon MakerNote Fields
 	0x927C,0x927C,0x927C,
 	0x927C,0x927C,0x927C,0x927C,
@@ -99,6 +107,8 @@ int alternatetagtable[fieldcount]={0x100,0x101,0x102,0x132,
 	0x010E,0x9286,0x11A,0x11B,0x128,0x131,0x13B,
 	0x9201,0x213,0xA217,0xA402,0xA403,0xA404,
 	0xA405,0xA406,0xA407,0xA408,0xA409,0xA40A,0xA40C,
+	// Added values after version 2.5
+	0x103,0x103,
 	// Canon MakerNote Fields
 	0x927C,0x927C,0x927C,
 	0x927C,0x927C,0x927C,0x927C,
@@ -128,27 +138,29 @@ enum MultipleChoiceIndexes {
  SaturationIndex=45,
  SharpnessIndex=46,
  SubjectDistanceIndex=47,
- CanonMacroModeIndex=48,
- CanonFlashModeIndex=49,
- CanonContinousIndex=50,
- CanonFocusModeIndex=51,
- CanonImageSizeIndex=52,
- CanonEasyShootingIndex=53,
- CanonDigitalZoomIndex=54,
- CanonContrastIndex=55,
- CanonSaturationIndex=56,
- CanonSharpnessIndex=57,
- CanonISOSpeedIndex=58,
- CanonMeteringModeIndex=59,
- CanonFocusTypeIndex=60,
- CanonAFSelectIndex=61,
- CanonExposureModeIndex=62,
- CanonFlashActivityIndex=63,
- CanonWhiteBalanceIndex=64,
- CanonFlashBiasIndex=65,
- GpsLatitudeIndex=71,
- GpsLongitudeIndex=72,
- GpsAltitudeIndex=73,
+ CompressionIndex=49,
+
+ CanonMacroModeIndex=50,
+ CanonFlashModeIndex=51,
+ CanonContinousIndex=52,
+ CanonFocusModeIndex=53,
+ CanonImageSizeIndex=54,
+ CanonEasyShootingIndex=55,
+ CanonDigitalZoomIndex=56,
+ CanonContrastIndex=57,
+ CanonSaturationIndex=58,
+ CanonSharpnessIndex=59,
+ CanonISOSpeedIndex=60,
+ CanonMeteringModeIndex=61,
+ CanonFocusTypeIndex=62,
+ CanonAFSelectIndex=63,
+ CanonExposureModeIndex=64,
+ CanonFlashActivityIndex=65,
+ CanonWhiteBalanceIndex=66,
+ CanonFlashBiasIndex=67,
+ GpsLatitudeIndex=73,
+ GpsLongitudeIndex=74,
+ GpsAltitudeIndex=75,
 };
 
 
@@ -265,6 +277,18 @@ char* CanonFlashBiasUnitsStr="-2 EV|-1.67 EV|-1.5 EV|-1.33 EV|-1 EV|-0.67 EV|-0.
 char* GpsUnitsStr="String|Floating|h|m|s|direction";
 char* GpsHeightUnitsStr="m|ft";
 
+int CompressionNr[49]={1,2,3,4,5,6,7,8,9,10,99,262,32766,32767,32769,32770,32771,32772,32773,32809,32867,32895,32896,32897,32898,32908,32909,32946,32947,33003,33005,34661,34676,34677};
+char* CompressionName[49+1]={"Uncompressed","CCITT 1D","T4/Group 3 Fax","T6/Group 4 Fax","LZW","JPEG (old-style)","JPEG","Adobe Deflate","JBIG B&W","JBIG Color","JPEG","Kodak 262","Next",
+  "Sony ARW Compressed","Packed RAW","Samsung SRW Compressed","CCIRLEW","Samsung SRW Compressed 2","PackBits","Thunderscan","Kodak KDC Compressed","IT8CTPAD","IT8LW","IT8MP","IT8BL",
+  "PixarFilm","PixarLog","Deflate","DCS","Aperio JPEG 2000 YCbCr","Aperio JPEG 2000 RGB","JBIG","SGILog","SGILog24","JPEG 2000","Nikon NEF Compressed","JBIG2 TIFF FX",
+  "Microsoft Document Imaging (MDI) Binary Level Codec","Microsoft Document Imaging (MDI) Progressive Transform Codec","Microsoft Document Imaging (MDI) Vector","ESRI Lerc",
+  "Lossy JPEG","LZMA2","Zstd","WebP","PNG","JPEG XR","Kodak DCR Compressed","Pentax PEF Compressed","UNKNOWN"};
+char* CompressionNameStr={"Uncompressed|CCITT 1D|T4/Group 3 Fax|T6/Group 4 Fax|LZW|JPEG (old-style)|JPEG|Adobe Deflate|JBIG B&W|JBIG Color|JPEG|Kodak 262|Next" \
+  "Sony ARW Compressed|Packed RAW|Samsung SRW Compressed|CCIRLEW|Samsung SRW Compressed 2|PackBits|Thunderscan|Kodak KDC Compressed|IT8CTPAD|IT8LW|IT8MP|IT8BL" \
+  "PixarFilm|PixarLog|Deflate|DCS|Aperio JPEG 2000 YCbCr|Aperio JPEG 2000 RGB|JBIG|SGILog|SGILog24|JPEG 2000|Nikon NEF Compressed|JBIG2 TIFF FX" \
+  "Microsoft Document Imaging (MDI) Binary Level Codec|Microsoft Document Imaging (MDI) Progressive Transform Codec|Microsoft Document Imaging (MDI) Vector|ESRI Lerc" \
+  "Lossy JPEG|LZMA2|Zstd|WebP|PNG|JPEG XR|Kodak DCR Compressed|Pentax PEF Compressed|UNKNOWN"};
+
 char* strlcpy(char* dst,const char* src,int maxlen)     // This function assumes there is room for maxlen characters
 {														//  + one space for the null character
 	if ((int)strlen(src)>=maxlen) {
@@ -334,6 +358,7 @@ int DCPCALL ContentGetSupportedField(int FieldIndex,char* FieldName,char* Units,
 		case(SaturationIndex):      UnitsStrPointer=SaturationUnitsStr; break;
 		case(SharpnessIndex):       UnitsStrPointer=SharpnessUnitsStr; break;
 		case(SubjectDistanceIndex): UnitsStrPointer=SubjectDistanceUnitsStr; break;
+		case(CompressionIndex):     UnitsStrPointer=CompressionNameStr; break;
 		case(CanonMacroModeIndex):  UnitsStrPointer=CanonMacroModeUnitsStr; break;
 		case(CanonFlashModeIndex):  UnitsStrPointer=CanonFlashModeUnitsStr; break;
 		case(CanonContinousIndex):  UnitsStrPointer=CanonContinousUnitsStr; break;
@@ -747,6 +772,7 @@ BOOL ParseTiffFile(int f,char* data,int datalen,int TagNeeded,int TagNeeded2,int
 {
 	int i;
 	BOOL MotorolaEndian=(data[0]=='M');
+	BOOL found;
 
 	// First, go to IFD0 offset, which contains info about main image
 	int ifd0offset=(int)get4bytes(data+4,MotorolaEndian);
@@ -821,7 +847,7 @@ BOOL ParseTiffFile(int f,char* data,int datalen,int TagNeeded,int TagNeeded2,int
 	int numvalue=0;
 	int numvalue2=0;
 	int Year=0,Month=0,Day=0,Hour=0,Min=0,Sec=0;
-	int l;
+	int l,j;
 	int nr;
 	char chr1,chr2;
 	double doublevalue=0;
@@ -1117,70 +1143,84 @@ BOOL ParseTiffFile(int f,char* data,int datalen,int TagNeeded,int TagNeeded2,int
 				numvalue=0;
 			strlcpy((char*)FieldValue,SubjectDistanceUnits[numvalue],maxlen-1);
 			break;
+		case 0x0103:
+			found=false;
+			for (j=0;j<COUNTOF(CompressionNr);j++)
+			{
+				if (CompressionNr[j]==numvalue) {
+					strlcpy((char*)FieldValue,CompressionName[j],maxlen-1);
+					found=true;
+					break;
+				}
+			}
+			if (!found) {
+				strlcpy((char*)FieldValue,CompressionName[COUNTOF(CompressionNr)],maxlen-1);
+			}
+			break;		
 		case 0x927C:		//MakerNote
 			switch(FieldIndex){
-				case 48:					// Macro Mode
+				case canon_start:					// Macro Mode
 					numvalue--;
 					if (numvalue<0 || numvalue>1)
 						numvalue=1;
 					strlcpy((char*)FieldValue,CanonMacroModeUnits[numvalue],maxlen-1);
 					break;
-				case 49:					// Flash mode
+				case canon_start+1:					// Flash mode
 					if(numvalue==16)
 						numvalue=7;
 					if(numvalue<0 || numvalue>7)
 						numvalue=1;
 					strlcpy((char*)FieldValue,CanonFlashModeUnits[numvalue],maxlen-1);
 					break;
-				case 50:					// Continuous Mode
+				case canon_start+2:					// Continuous Mode
 					if(numvalue<0 || numvalue>1)
 						numvalue=0;
 					strlcpy((char*)FieldValue,CanonContinousUnits[numvalue],maxlen-1);
 					break;
-				case 51:			// Focus Mode
+				case canon_start+3:			// Focus Mode
 					if(numvalue<0 || numvalue>6)
 						numvalue=0;
 					strlcpy((char*)FieldValue,CanonFocusModeUnits[numvalue],maxlen-1);
 					break;
-				case 52:			// Image Size
+				case canon_start+4:			// Image Size
 					if(numvalue<0 || numvalue>2)
 						numvalue=0;
 					strlcpy((char*)FieldValue,CanonImageSizeUnits[numvalue],maxlen-1);
 					break;
-				case 53:			// Easy shooting
+				case canon_start+5:			// Easy shooting
 					if(numvalue<0 || numvalue>11)
 						numvalue=0;
 					strlcpy((char*)FieldValue,CanonEasyShootingUnits[numvalue],maxlen-1);
 					break;
-				case 54:			// Digital Zoom
+				case canon_start+6:			// Digital Zoom
 					if(numvalue<0 || numvalue>2)
 						numvalue=0;
 					strlcpy((char*)FieldValue,CanonDigitalZoomUnits[numvalue],maxlen-1);
 					break;
-				case 55:		// Contrast
-				case 56:		// Saturation
-				case 57:		// Sharpness
+				case canon_start+7:		// Contrast
+				case canon_start+8:		// Saturation
+				case canon_start+9:		// Sharpness
 					if(numvalue==65535)
 						numvalue=2;
 					if(numvalue<0 || numvalue>2 )
 						numvalue=0;
 					strlcpy((char*)FieldValue,CanonCSSUnits[numvalue],maxlen-1);
 					break;
-				case 58:		// ISO speed
+				case canon_start+10:		// ISO speed
 					if(numvalue>=15 && numvalue<=19)
 						numvalue-=14;
 					else
 						numvalue=0;
 					strlcpy((char*)FieldValue,CanonISOSpeedUnits[numvalue],maxlen-1);
 					break;
-				case 59:		// Metering Mode
+				case canon_start+11:		// Metering Mode
 					if(numvalue>=3 && numvalue<=5)
 						numvalue-=3;
 					else
 						numvalue=0;
 					strlcpy((char*)FieldValue,CanonMeteringModeUnits[numvalue],maxlen-1);
 					break;
-				case 60:		// Focus Type
+				case canon_start+12:		// Focus Type
 					if(numvalue==3)
 						numvalue=2;
 					else if(numvalue==8)
@@ -1189,29 +1229,29 @@ BOOL ParseTiffFile(int f,char* data,int datalen,int TagNeeded,int TagNeeded2,int
 						numvalue=1;
 					strlcpy((char*)FieldValue,CanonFocusTypeUnits[numvalue],maxlen-1);
 					break;
-				case 61:			// Auto Focus Select
+				case canon_start+13:			// Auto Focus Select
 					if(numvalue>=12288 && numvalue<=12292)
 						numvalue-=12288;
 					else
 						numvalue=0;
 					strlcpy((char*)FieldValue,CanonAFSelectUnits[numvalue],maxlen-1);
 					break;
-				case 62:			// Exposure Mode 
+				case canon_start+14:			// Exposure Mode 
 					if(numvalue>5 || numvalue<0)
 						numvalue=0;
 					strlcpy((char*)FieldValue,CanonExposureModeUnits[numvalue],maxlen-1);				
 					break;
-				case 63:			// Flash Activity
+				case canon_start+15:			// Flash Activity
 					if(numvalue>1 || numvalue<0)
 						numvalue=0;
 					strlcpy((char*)FieldValue,CanonFlashActivityUnits[numvalue],maxlen-1);				
 					break;
-				case 64:			// White Balance
+				case canon_start+16:			// White Balance
 					if(numvalue>6 || numvalue<0)
 						numvalue=0;
 					strlcpy((char*)FieldValue,CanonWhiteBalanceUnits[numvalue],maxlen-1);				
 					break;
-				case 65:			// Flash bias
+				case canon_start+17:			// Flash bias
 					switch(numvalue){
 						case (0xffc0): numvalue=0; break;
 						case (0xffcc): numvalue=1; break;
