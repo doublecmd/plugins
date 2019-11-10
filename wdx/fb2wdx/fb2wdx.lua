@@ -1,5 +1,5 @@
 -- fb2wdx.lua (cross-platform)
--- 2019.04.22
+-- 2019.11.10
 -- Для автодетекта как UTF-8 without BOM --
 
 local r, zip = pcall(require, 'zip')
@@ -13,7 +13,8 @@ if r == false then
     pt = '.*\\'
     pe = '?.dll;'
   end
-  local pc = debug.getinfo(1).short_src
+  local pc = debug.getinfo(1).source
+  if string.sub(pc, 1, 1) == '@' then pc = string.sub(pc, 2, -1) end
   local i, j = string.find(pc, pt)
   if i == nil then return nil end
   pc = string.sub(pc, i, j)
