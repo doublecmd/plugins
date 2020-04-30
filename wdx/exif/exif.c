@@ -1366,6 +1366,42 @@ int DCPCALL ContentGetValue(char* FileName,int FieldIndex,int UnitIndex,void* Fi
 	if (strncmp(data,"\x49\x49",2)==0 || strncmp(data,"\x4D\x4D",2)==0) {
 		length=sizeof(data);
 		lseek(f,0,SEEK_SET);
+	} else if (strncmp(data+4,"ftypcrx",7)==0) {
+		DWORD headersize=get4bytes(data,true);
+		if (lseek(f,headersize,SEEK_SET) == (off_t)-1) {
+			close(f);
+			return ft_fileerror;
+		}
+		bytesread = read(f,data,8);
+		if (strncmp(data+4,"moov",4)!=0) {
+			close(f);
+			return ft_fileerror;
+		}
+		bytesread = read(f,data,24);   // uuid header inside the moov header, contains all metadata. It's 8+16 bytes long
+		if (strncmp(data+4,"uuid",4)!=0) {
+			close(f);
+			return ft_fileerror;
+		}
+		DWORD uuiddatasize=get4bytes(data,true);
+		DWORD lastpos=0;
+		while(1) {      // find all EXIF headers within the UUID header!
+			bytesread = read(f,data,8);
+			headersize=get4bytes(data,true);
+			lastpos+=headersize;
+			if (strncmp(data+4,"CMT",3)==0 && headersize>=16 && headersize<=64*1024) {
+				bytesread = read(f,data,headersize-8);
+				if (ParseTiffFile(f,data,headersize-8,tagtable[FieldIndex],alternatetagtable[FieldIndex],fieldtypes[FieldIndex],FieldIndex,FieldValue,maxlen,(flags & 32768)==0,UnitIndex)) {
+					close(f);
+					return fieldtypes[FieldIndex];
+				}
+			} else if (headersize<8 || (lseek(f,headersize-8,SEEK_CUR) == (off_t)-1)) {
+				break;
+			}
+			if (lastpos>=uuiddatasize)
+				break;
+		}
+		close(f);
+		return ft_fileerror;
 	} else if (strncmp(data,"\xFF\xD8\xFF\xE1",3)!=0 ||   // start directly with Exif?
 		strncmp(data+6,"Exif",4)!=0) {
 		// no -> skip all other JPG headers!

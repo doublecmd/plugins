@@ -2,15 +2,17 @@ Exif plugin for Double Commander (Linux version). It is based on
 
 ----------------------------------------------------------------
 
-Exif plugin version 2.5 for Total Commander
+Exif plugin version 2.6 for Total Commander
 
 This plugin extracts digital camera data from JPG files, like exposure time.
 Can be used in thumbnail view and custom column view, as well as in the
 search and multi-rename functions.
 
 Changelog:
+20190517 Release 2.6
+20190517 Added: Support for new Canon Raw 3 format CR3. To use with CR3, you need to uninstall the old plugin via Configuration - Options - Plugins - Content plugins!
 20190517 Release 2.5
-20190517 Support new fields Compression and CompressionName
+20190517 Added: New fields Compression and CompressionName for exif field Nr. 0x0103
 20140916 Release 2.4
 20140916 Added: GPS longitude/latitude of type "floating": increased digits after decimal point to 6
 20140916 Fixed: The GPS longitude and latitude fields of type "Floating" would return invalid values if the "minute" part also contained fractional seconds
