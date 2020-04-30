@@ -18,7 +18,7 @@
 
 #define COUNTOF(x) sizeof(x)/sizeof(x[0])
 
-#define _detectstring "(EXT=\"JPG\") | (EXT=\"JPEG\") | (EXT=\"TIFF\") | (EXT=\"TIF\") | (EXT=\"JPE\") | (EXT=\"CRW\") | (EXT=\"THM\") | (EXT=\"CR2\") | (EXT=\"DNG\") | (EXT=\"NEF\")"
+#define _detectstring "(EXT=\"JPG\") | (EXT=\"JPEG\") | (EXT=\"TIFF\") | (EXT=\"TIF\") | (EXT=\"JPE\") | (EXT=\"CRW\") | (EXT=\"THM\") | (EXT=\"CR2\") | (EXT=\"CR3\") | (EXT=\"DNG\") | (EXT=\"NEF\")"
 
 BOOL ParseTiffFile(int f,char* data,int datalen,int TagNeeded,int TagNeeded2,int FormatNeeded,int FieldIndex, void* FieldValue,int maxlen,BOOL unicode,int UnitIndex);
 
@@ -1344,7 +1344,7 @@ int DCPCALL ContentGetValue(char* FileName,int FieldIndex,int UnitIndex,void* Fi
 	if (!p) return ft_fileerror;
 	if (!(strcasecmp(p,".jpg")==0 || strcasecmp(p,".jpeg")==0 || strcasecmp(p,".tiff")==0 || strcasecmp(p,".tif")==0
        || strcasecmp(p,".jpe")==0 || strcasecmp(p,".crw")==0  || strcasecmp(p,".thm")==0 || strcasecmp(p,".cr2")==0
-       || strcasecmp(p,".dng")==0 || strcasecmp(p,".nef")==0))
+       || strcasecmp(p,".dng")==0 || strcasecmp(p,".nef")==0 || strcasecmp(p,".cr3")==0))
 		return ft_fileerror;
 
 	strlcpy(FileName2,FileName,MAX_PATH-1);
