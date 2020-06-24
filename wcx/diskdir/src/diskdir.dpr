@@ -175,10 +175,7 @@ begin
           buf1[0]:=#0;
         end;
         strlcat(buf1,buf,sizeof(buf1)-1);
-        p:=strscan(buf1,':');
-        if p<>nil then inc(p,2)
-                  else p:=buf1;
-        strlcopy(HeaderData.FileName,p,sizeof(HeaderData.FileName));
+        strlcopy(HeaderData.FileName,buf1,sizeof(HeaderData.FileName));
         if ArchiveList[hArcData].SrcDir[0]=#0 then   {First line!}
           strlcopy(ArchiveList[hArcData].SrcDir,buf1,3);
 
