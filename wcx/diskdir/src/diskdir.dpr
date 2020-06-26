@@ -26,18 +26,16 @@ type ArchiveRec=record
 {Keep a list of currently open archives (up to a maximum of maxarchives)}
 var ArchiveList:array[1..maxarchives] of ArchiveRec;
 
-var _TokenSource: pchar;
-
-FUNCTION StrTok(Source: pchar; Token: ANSICHAR): pchar;
+FUNCTION StrTokR(Source: pchar; Token: ANSICHAR; var _TokenSource: pchar): pchar;
   VAR P: pchar;
 BEGIN
   IF Source <> Nil THEN _TokenSource := Source;
   IF _TokenSource = Nil THEN begin
-    strTok:=nil;
+    StrTokR:=nil;
     exit
   end;
   P := StrScan(_TokenSource, Token);
-  StrTok := _TokenSource;
+  StrTokR := _TokenSource;
   IF P <> Nil THEN BEGIN
     P^ := #0;
     Inc(P);
@@ -143,6 +141,7 @@ var buf:array[0..1023] of char;
     tdt:TDateTime1;
     code:integer;
     UnpSizeComp:comp;
+    saveptr: pchar = nil;
 begin
   if ArchiveList[hArcData].ArchiveActive then begin
     if not ArchiveList[hArcData].ArchiveActive then
@@ -161,10 +160,10 @@ begin
       {$i+}
       if ioresult=0 then begin
         fillchar(HeaderData,sizeof(HeaderData)-16,#0);
-        p:=strtok(buf,#9);
-        psize:=strtok(nil,#9);
-        pdate:=strtok(nil,#9);
-        ptime:=strtok(nil,#9);
+        p:=StrTokR(buf,#9, saveptr);
+        psize:=StrTokR(nil,#9, saveptr);
+        pdate:=StrTokR(nil,#9, saveptr);
+        ptime:=StrTokR(nil,#9, saveptr);
         if (buf[0]<>#0) and (buf[strlen(buf)-1]=PathDelim) then
           HeaderData.FileAttr:= S_IFDIR;
         if strscan(buf,PathDelim)=nil then begin  {No directory -> assume last given dir!}
@@ -199,24 +198,24 @@ begin
         HeaderData.FileTime:=-1;
         if pdate<>nil then begin {Year.month.day}
           fillchar(tdt,sizeof(tdt),#0);
-          p1:=strtok(pdate,'.');
+          p1:=StrTokR(pdate,'.', saveptr);
           val(p1,tdt.year,code);
-          p1:=strtok(nil,'.');
+          p1:=StrTokR(nil,'.', saveptr);
           if (code=0) and (p1<>nil) then begin
             if tdt.year<1900 then if tdt.year<80 then inc(tdt.year,2000)
                                                  else inc(tdt.year,1900);
             val(p1,tdt.month,code);
-            p1:=strtok(nil,'.');
+            p1:=StrTokR(nil,'.', saveptr);
             if (code=0) and (p1<>nil) then begin
               val(p1,tdt.day,code);
               if code=0 then begin
                 if ptime<>nil then begin {hour:min:seconds}
-                  p1:=strtok(ptime,':');
+                  p1:=StrTokR(ptime,':', saveptr);
                   val(p1,tdt.hour,code);
-                  p1:=strtok(nil,'.');
+                  p1:=StrTokR(nil,'.', saveptr);
                   if (code=0) and (p1<>nil) then begin
                     val(p1,tdt.min,code);
-                    p1:=strtok(nil,'.');
+                    p1:=StrTokR(nil,'.', saveptr);
                     if (code=0) then
                       if (p1<>nil) then val(p1,tdt.sec,code);
                   end;
