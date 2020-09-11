@@ -1,5 +1,5 @@
 -- fb2wdx.lua (cross-platform)
--- 2019.11.10
+-- 2020.09.11
 -- Для автодетекта как UTF-8 without BOM --
 
 local r, zip = pcall(require, 'zip')
@@ -122,7 +122,7 @@ function ContentGetValue(FileName, FieldIndex, UnitIndex, flags)
     else
       pd = GetTagData(pd, 'date')
       if pd == nil then return nil end
-      pd = string.match(pd, '^%d+')
+      pd = string.match(pd, '^%s*(%d+)')
     end
     if pd == nil then return nil else return tonumber(pd) end
   elseif FieldIndex == 15 then
@@ -142,7 +142,7 @@ function ContentGetValue(FileName, FieldIndex, UnitIndex, flags)
     else
       pd = GetTagData(pd, 'date')
       if pd == nil then return nil end
-      pd = string.match(pd, '%d%d%d%d')
+      pd = string.match(pd, '(%d%d%d%d)')
     end
     if pd == nil then return nil end
     -- ft_date don't supported
@@ -292,6 +292,7 @@ function GetFileDescr(fn, fe)
               o = true
               break
             end
+            b = b + 1024
           end
         end
         f:close()
@@ -317,6 +318,7 @@ function GetFileDescr(fn, fe)
           o = true
           break
         end
+        b = b + 1024
       end
     end
     f:close()
