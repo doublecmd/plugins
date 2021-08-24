@@ -1,5 +1,5 @@
 mediainfo-video.lua
-2019.04.30
+2021.08.24
 
 Get some technical information about video files. Cross-platform.
 
@@ -36,9 +36,10 @@ MediaInfo (http://mediaarea.net/MediaInfo):
 
 General: Title
 General: Format
-General: Duration ms
-General: Duration HH:MM:SS
-General: Duration HH:MM:SS.MMM
+General: Duration, ms
+General: Duration, s
+General: Duration, HH:MM:SS
+General: Duration, HH:MM:SS.MMM
 General: Overall bit rate
 General: Overall bit rate, auto Bps/KBps/MBps
 General: Count of streams
@@ -84,3 +85,5 @@ Audio: Language
 2019.04.27 - UPD: Adding new fields is easier.
 2019.04.28 - ADD: Video: Bits/(Pixel*Frame)
 2019.04.30 - DEL: Field "General: MIME/Content-Type".
+2021.08.24 - ADD: "General: Duration, s".
+             CHG: Rename "General: Duration*".

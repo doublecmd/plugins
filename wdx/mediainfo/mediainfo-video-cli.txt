@@ -1,5 +1,5 @@
 mediainfo-video-cli.lua
-2019.04.30
+-- 2021.08.24
 
 Get some technical information about video files.
 
@@ -13,9 +13,10 @@ Get some technical information about video files.
 
 General: Title
 General: Format
-General: Duration ms
-General: Duration HH:MM:SS
-General: Duration HH:MM:SS.MMM
+General: Duration, ms
+General: Duration, s
+General: Duration, HH:MM:SS
+General: Duration, HH:MM:SS.MMM
 General: Overall bit rate
 General: Overall bit rate, auto Bps/KBps/MBps
 General: Count of streams
