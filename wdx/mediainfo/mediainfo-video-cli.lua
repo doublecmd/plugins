@@ -1,5 +1,5 @@
 -- mediainfo-video-cli.lua
--- 2019.04.30
+-- 2021.08.24
 --
 -- NOTE: If you want to change the number of fields, see the lines after "-- ATTENTION!":
 --       also you mast to change some indexes!
@@ -8,9 +8,10 @@
 local fields = {
  {"General: Title",                                "", 8, "General;%Title%"},
  {"General: Format",                               "", 8, "General;%Format%"},
- {"General: Duration ms",                          "", 2, "General;%Duration%"},
- {"General: Duration HH:MM:SS",                    "", 8, "General;%Duration/String3%"},
- {"General: Duration HH:MM:SS.MMM",                "", 8, "General;%Duration/String3%"},
+ {"General: Duration, ms",                         "", 2, "General;%Duration%"},
+ {"General: Duration, s",                          "", 1, "General;%Duration%"},
+ {"General: Duration, HH:MM:SS",                   "", 8, "General;%Duration/String3%"},
+ {"General: Duration, HH:MM:SS.MMM",               "", 8, "General;%Duration/String3%"},
  {"General: Overall bit rate",        "Bps|KBps|MBps", 3, "General;%OverallBitRate%"},
  {"General: Overall bit rate, auto Bps/KBps/MBps", "", 8, "General;%OverallBitRate%"},
  {"General: Count of streams",                     "", 2, "General;%StreamCount%"},
@@ -66,14 +67,14 @@ end
 
 function ContentGetValue(FileName, FieldIndex, UnitIndex, flags)
   -- ATTENTION!
-  if FieldIndex > 44 then return nil end
+  if FieldIndex > 45 then return nil end
   local t = string.sub(FileName, string.len(FileName) - 3, -1)
   if (t == "/..") or (t == "\\..") then return nil end
   t = string.sub(t, 2, -1)
   if (t == "/.") or (t == "\\.") then return nil end
   -- ATTENTION!
   if flags == 1 then
-    if FieldIndex < 42 then return nil end
+    if FieldIndex < 43 then return nil end
   end
   local h = io.popen('mediainfo --Inform="' .. fields[FieldIndex + 1][4] .. '" "' .. FileName .. '"')
   if not h then return nil end
@@ -81,8 +82,10 @@ function ContentGetValue(FileName, FieldIndex, UnitIndex, flags)
   h:close()
   res = string.gsub(res, "[\r\n]+", "")
   if FieldIndex == 3 then
+    return math.floor(res / 1000)
+  elseif FieldIndex == 4 then
     return string.match(res, "%d+:%d+:%d+")
-  elseif (FieldIndex == 5) or (FieldIndex == 16) then
+  elseif (FieldIndex == 6) or (FieldIndex == 17) then
     if res == '' then
       return nil
     else
@@ -94,7 +97,7 @@ function ContentGetValue(FileName, FieldIndex, UnitIndex, flags)
         return res / 1000000
       end
     end
-  elseif (FieldIndex == 6) or (FieldIndex == 17) then
+  elseif (FieldIndex == 7) or (FieldIndex == 18) then
     if res == '' then
       return nil
     else
@@ -108,7 +111,7 @@ function ContentGetValue(FileName, FieldIndex, UnitIndex, flags)
         return string.format("%.2f", res / 1000000) .. " MBps"
       end
     end
-  elseif (FieldIndex == 21) or (FieldIndex == 23) or (FieldIndex == 25) or (FieldIndex == 27) then
+  elseif (FieldIndex == 22) or (FieldIndex == 24) or (FieldIndex == 26) or (FieldIndex == 28) then
     return string.gsub(res, "%.", string.match(tostring(0.5), "([^05+])"))
   else
     return res

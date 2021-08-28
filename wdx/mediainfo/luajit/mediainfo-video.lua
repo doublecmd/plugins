@@ -1,5 +1,5 @@
 -- mediainfo-video.lua
--- 2019.04.30
+-- 2021.08.24
 --
 -- NOTE: If you want to change the number of fields, see the lines after "-- ATTENTION!":
 --       also you mast to change some indexes!
@@ -13,9 +13,10 @@ local mediaInfo = require("ffi-mediaInfo")
 local fields = {
  {"General: Title",                                "", 8, 1, ""},
  {"General: Format",                               "", 8, 2, ""},
- {"General: Duration ms",                          "", 2, 3, ""},
- {"General: Duration HH:MM:SS",                    "", 8, 4, "ShortTime"},
- {"General: Duration HH:MM:SS.MMM",                "", 8, 4, ""},
+ {"General: Duration, ms",                         "", 2, 3, ""},
+ {"General: Duration, s",                          "", 1, 3, "ToSeconds"},
+ {"General: Duration, HH:MM:SS",                   "", 8, 4, "ShortTime"},
+ {"General: Duration, HH:MM:SS.MMM",               "", 8, 4, ""},
  {"General: Overall bit rate",        "Bps|KBps|MBps", 3, 5, "BitRateUnits"},
  {"General: Overall bit rate, auto Bps/KBps/MBps", "", 8, 5, "BitRateFloat"},
  {"General: Count of streams",                     "", 2, 6, ""},
@@ -119,7 +120,7 @@ end
 
 function ContentGetValue(FileName, FieldIndex, UnitIndex, flags)
   -- ATTENTION!
-  if FieldIndex > 40 then return nil end
+  if FieldIndex > 41 then return nil end
   local t = string.sub(FileName, string.len(FileName) - 3, -1)
   if (t == "/..") or (t == "\\..") then return nil end
   t = string.sub(t, 2, -1)
@@ -147,6 +148,8 @@ function ContentGetValue(FileName, FieldIndex, UnitIndex, flags)
     return BitRateUnits(fields[FieldIndex + 1][4], UnitIndex)
   elseif fields[FieldIndex + 1][5] == "BitRateFloat" then
     return BitRateFloat(fields[FieldIndex + 1][4])
+  elseif fields[FieldIndex + 1][5] == "ToSeconds" then
+    return ToSeconds(fields[FieldIndex + 1][4])
   else
     return res[fields[FieldIndex + 1][4]]
   end
@@ -182,4 +185,9 @@ function BitRateFloat(c)
     return string.format("%.2f", res[c] / 1000000) .. " MBps"
   end
   return nil
+end
+
+function ToSeconds(c)
+  if res[c] == '' then return nil end
+  return math.floor(res[c] / 1000)
 end
