@@ -2,13 +2,17 @@ Exif plugin for Double Commander (Linux version). It is based on
 
 ----------------------------------------------------------------
 
-Exif plugin version 2.6 for Total Commander
+Exif plugin version 2.7 for Total Commander
 
 This plugin extracts digital camera data from JPG files, like exposure time.
 Can be used in thumbnail view and custom column view, as well as in the
 search and multi-rename functions.
 
 Changelog:
+20220120 Release 2.7
+20220120 Added: Support for more RAW image types: .ORF, .RAW, .RW2, .ARW, .PEF, .RAF (to use, remove the plugin via Configuration - Options - Plugins - Content Plugins, then install it again)
+20220119 Added: New GPS date field
+20220119 Added: Convert aperture values from APEX format to F-Number: sqare root(2) to the power of the stored APEX value
 20190517 Release 2.6
 20190517 Added: Support for new Canon Raw 3 format CR3. To use with CR3, you need to uninstall the old plugin via Configuration - Options - Plugins - Content plugins!
 20190517 Release 2.5

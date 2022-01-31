@@ -18,17 +18,17 @@
 
 #define COUNTOF(x) sizeof(x)/sizeof(x[0])
 
-#define _detectstring "(EXT=\"JPG\") | (EXT=\"JPEG\") | (EXT=\"TIFF\") | (EXT=\"TIF\") | (EXT=\"JPE\") | (EXT=\"CRW\") | (EXT=\"THM\") | (EXT=\"CR2\") | (EXT=\"CR3\") | (EXT=\"DNG\") | (EXT=\"NEF\")"
+#define _detectstring "(EXT=\"JPG\") | (EXT=\"JPEG\") | (EXT=\"TIFF\") | (EXT=\"TIF\") | (EXT=\"JPE\") | (EXT=\"CRW\") | (EXT=\"THM\") | (EXT=\"CR2\") | (EXT=\"CR3\") | (EXT=\"DNG\") | (EXT=\"NEF\") | (EXT=\"ORF\") | (EXT=\"RAW\") | (EXT=\"RW2\") | (EXT=\"ARW\") | (EXT=\"PEF\") | (EXT=\"RAF\")"
 
 BOOL ParseTiffFile(int f,char* data,int datalen,int TagNeeded,int TagNeeded2,int FormatNeeded,int FieldIndex, void* FieldValue,int maxlen,BOOL unicode,int UnitIndex);
 
-#define fieldcount 78
+#define fieldcount 79
 
 #define canon_start 50
 #define canon_end 72
 
 #define gps_start 73
-#define gps_end 77
+#define gps_end 78
 
 char* fieldnames[fieldcount]={"Width","Height","BitsPerSample","DateTimeStr",
 	"Date","Time","DateOriginal","TimeOriginal","DateDigitized","TimeDigitized",
@@ -49,7 +49,7 @@ char* fieldnames[fieldcount]={"Width","Height","BitsPerSample","DateTimeStr",
 	"Canon ISO Speed","Canon Metering Mode","Canon Focus Type","Canon AF point selected","Canon Exposure mode",
 	"Canon Flash Activity","Canon White Balance","Canon Flash Bias","Canon Image type","Canon Firmware version",
 	"Canon Image number","Canon Owner name","Canon Camera serial number",
-	"GPS Latitude","GPS Longitude","GPS Altitude","GPS Timestamp", "GPS Direction"
+	"GPS Latitude","GPS Longitude","GPS Altitude","GPS Timestamp", "GPS Direction", "GPS Datestamp"
 	};
 
 int fieldtypes[fieldcount]={ft_numeric_32,ft_numeric_32,ft_numeric_32,ft_string,
@@ -71,7 +71,7 @@ int fieldtypes[fieldcount]={ft_numeric_32,ft_numeric_32,ft_numeric_32,ft_string,
 	ft_multiplechoice,ft_multiplechoice,ft_multiplechoice,ft_multiplechoice,ft_multiplechoice,
 	ft_multiplechoice,ft_multiplechoice,ft_multiplechoice,ft_string,ft_string,
 	ft_string,ft_string,ft_string,
-	ft_numeric_floating,ft_numeric_floating,ft_numeric_floating,ft_time,ft_numeric_floating
+	ft_numeric_floating,ft_numeric_floating,ft_numeric_floating,ft_time,ft_numeric_floating,ft_date
 	};
 
 int tagtable[fieldcount]={0xA002,0xA003,0x102,0x132,
@@ -94,7 +94,7 @@ int tagtable[fieldcount]={0xA002,0xA003,0x102,0x132,
 	0x927C,0x927C,0x927C,0x927C,0x927C,
 	0x927C,0x927C,0x927C,
 
-	0x8825,0x8825,0x8825,0x8825,0x8825
+	0x8825,0x8825,0x8825,0x8825,0x8825,0x8825
 	};
 
 int alternatetagtable[fieldcount]={0x100,0x101,0x102,0x132,
@@ -117,7 +117,7 @@ int alternatetagtable[fieldcount]={0x100,0x101,0x102,0x132,
 	0x927C,0x927C,0x927C,0x927C,0x927C,
 	0x927C,0x927C,0x927C,
 	
-	0x8825,0x8825,0x8825,0x8825,0x8825
+	0x8825,0x8825,0x8825,0x8825,0x8825,0x8825
 	};
 
 
@@ -483,6 +483,7 @@ int GetTagDataOffset(char* data,int offset,int TagNeeded,BOOL MotorolaEndian,int
 #define GPSAltitude 6
 #define GPSTimeStamp 7
 #define GPSImageDirection 0x11
+#define GPSDateStamp 0x1d
 
 double ParseGps(char* data,int datalen,int makernoteoffset,int FieldIndex,BOOL MotorolaEndian,char* bufval,int UnitIndex)
 {
@@ -666,6 +667,16 @@ double ParseGps(char* data,int datalen,int makernoteoffset,int FieldIndex,BOOL M
 			result=doublevalue;
 		}
 		return result;
+	} else 	if (FieldIndex==gps_start+5) {  //Datestamp
+		tagdataoffset=GetTagDataOffset(data,makernoteoffset,
+			GPSDateStamp,MotorolaEndian,datalen);
+		if(tagdataoffset==-1)				// The tag was not found in the header
+			return 1e100;
+		// GPS date stamp is stored as 11 character string
+		char* pcharvalue=data+tagdataoffset;
+		if (pcharvalue[0]>='0' && pcharvalue[0]<='9')
+			strlcpy(bufval,pcharvalue,11);
+		return 0;
 	}
 	return 1e100;
 }
@@ -927,11 +938,11 @@ BOOL ParseTiffFile(int f,char* data,int datalen,int TagNeeded,int TagNeeded2,int
 					chr2 = data[nr+1];
 					data[tagdataoffset+tagnumelements]=0;				// Since the string is not neccerilly NULL terminated - make it so
 					data[tagdataoffset+tagnumelements+1]=0;
-                                        /*
-                                        if(!WideCharToMultiByte(CP_ACP,0,(LPCWSTR)(data+tagdataoffset+8),nr/2+1,bufval,nr,NULL,NULL))
+					/*
+					if(!WideCharToMultiByte(CP_ACP,0,(LPCWSTR)(data+tagdataoffset+8),nr/2+1,bufval,nr,NULL,NULL))
 						bufval[0]=0;
-                                        */
-                                        bufval[nr]=0;
+					*/
+					bufval[nr]=0;
 					data[nr]=chr1;				// Just to be on the safe side
 					data[nr+1]=chr2;
 				}
@@ -1016,6 +1027,11 @@ BOOL ParseTiffFile(int f,char* data,int datalen,int TagNeeded,int TagNeeded2,int
 //				MultiByteToWideChar(CP_ACP,0,bufval,-1,(WCHAR*)((char*)FieldValue+sizeof(double)),maxlen-sizeof(double));
 //			else
 				strlcpy((char*)FieldValue+sizeof(double),bufval,maxlen-sizeof(double));
+		} else if (TagNeeded==0x9202 || TagNeeded==0x9205) {
+			// https://www.media.mit.edu/pia/Research/deepview/exif.html
+			// The actual aperture value of lens when the image was taken. To convert this value to ordinary F-number(F-stop),
+			// calculate this value's power of root 2 (=1.4142). For example, if value is '5', F-number is 1.4142^5 = F5.6.
+			*(double*)FieldValue=pow(1.4142135623730950488016887242097,doublevalue);
 		}
 		break;
 	case ft_date:
@@ -1344,7 +1360,9 @@ int DCPCALL ContentGetValue(char* FileName,int FieldIndex,int UnitIndex,void* Fi
 	if (!p) return ft_fileerror;
 	if (!(strcasecmp(p,".jpg")==0 || strcasecmp(p,".jpeg")==0 || strcasecmp(p,".tiff")==0 || strcasecmp(p,".tif")==0
        || strcasecmp(p,".jpe")==0 || strcasecmp(p,".crw")==0  || strcasecmp(p,".thm")==0 || strcasecmp(p,".cr2")==0
-       || strcasecmp(p,".dng")==0 || strcasecmp(p,".nef")==0 || strcasecmp(p,".cr3")==0))
+       || strcasecmp(p,".dng")==0 || strcasecmp(p,".nef")==0 || strcasecmp(p,".orf")==0 || strcasecmp(p,".cr3")==0
+       || strcasecmp(p,".raw")==0 || strcasecmp(p,".rw2")==0 || strcasecmp(p,".arw")==0 || strcasecmp(p,".pef")==0
+	   || strcasecmp(p,".raf")==0))
 		return ft_fileerror;
 
 	strlcpy(FileName2,FileName,MAX_PATH-1);
@@ -1353,7 +1371,7 @@ int DCPCALL ContentGetValue(char* FileName,int FieldIndex,int UnitIndex,void* Fi
 	   strcpy(FileName2+strlen(FileName2)-3,"thm");
 	} 
 	
-        f=open(FileName2, O_RDONLY);
+	f=open(FileName2, O_RDONLY);
 	if (f==INVALID_HANDLE_VALUE)
 		return ft_fileerror;
 
@@ -1402,6 +1420,20 @@ int DCPCALL ContentGetValue(char* FileName,int FieldIndex,int UnitIndex,void* Fi
 		}
 		close(f);
 		return ft_fileerror;
+	} else if (strncmp(data,"FUJIFILMCCD-",12)==0) {  // we only read the first 12 characters, it would be FUJIFILMCCD-RAW!
+		bytesread = read(f,data,28+32+24);
+		DWORD offset=get4bytes(data+28+32+24-12,true);
+		if (lseek(f,offset,SEEK_SET) == (off_t)-1) {
+			close(f);
+			return ft_fileerror;
+		}
+		bytesread = read(f,data,12);
+		if (strncmp(data,"\xFF\xD8\xFF\xE1",3)!=0 ||   // start directly with Exif?
+			strncmp(data+6,"Exif",4)!=0) {
+			close(f);
+			return ft_fileerror;
+		}
+		length=256*(byte)data[4] + (byte)data[5];
 	} else if (strncmp(data,"\xFF\xD8\xFF\xE1",3)!=0 ||   // start directly with Exif?
 		strncmp(data+6,"Exif",4)!=0) {
 		// no -> skip all other JPG headers!
