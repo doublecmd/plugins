@@ -24,6 +24,7 @@ install -m 644 wcx/diskdir/*.txt       release/wcx/diskdir/
 
 make -C wdx/exif clean all
 install -m 644 wdx/exif/exif.wdx release/wdx/exif/
+install -m 644 wdx/exif/exif.lng release/wdx/exif/
 install -m 644 wdx/exif/*.txt    release/wdx/exif/
 
 lazbuild wdx/ooinfo/src/OOInfo.lpi

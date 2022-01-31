@@ -1,0 +1,569 @@
+[DEU]
+Width=Breite
+Height=Höhe
+ColorDepth=Farbtiefe
+DateTimeStr=DatumZeitStr
+Date=Datum
+Time=Zeit
+DateOriginal=Originaldatum
+TimeOriginal=Originalzeit
+DateDigitized=Digitalisierdatum
+TimeDigitized=Digitalisierzeit
+ComponentsConfiguration=Komponentenkonfiguration
+ExifVersion=Exif-Version
+ExposureBiasValue=Belichtungsbiaswert
+ExposureProgram=Belichtungsprogramm
+ExposureTimeFraction=Belichtungsdauer
+ExposureTimeNr=BelichtungsZeit(Nr)
+Flash=Blitz
+FNumber=F-Zahl
+FocalLength=Brennweite
+ISO=ISO
+LightSource=Lichtquelle
+Make=Hersteller
+ApertureValue=Apertur
+MeteringMode=Messmodus
+Model=Modell
+Orientation=Orientierung
+
+// new fields
+BitsPerSample=BitsProAufnahmepunkt
+CompressedBitsPerPixel=KomprimierteBitsProPixel
+MaxApertureValue=MaxApertur
+ImageDescription=Bildbeschreibung
+UserComment=Benutzerkommentar
+XResolution=XAuflösung
+YResolution=YAuflösung
+ResolutionUnit=Auflösungseinheit
+Software=Software
+Artist=Künstler
+ShutterSpeed=Verschlussgeschwindigkeit
+YCbCrPositioning=YCbCrPositionierung
+SensingMethod=Messmethode
+ExposureMode=Belichtungsmode
+WhiteBalance=Weissabgleich
+DigitalZoomRatio=Digitalzoomverhältnis
+FocalLengthIn35mmFilm=Brennweitein35mmFilm
+SceneCaptureType=Szenenaufnahmetyp
+GainControl=Gainkontrolle
+Contrast=Kontrast
+Saturation=Sättigung
+Sharpness=Schärfe
+SubjectDistanceRange=Entfernungsbereich
+
+Compression=Kompression
+CompressionName=KompressionsName
+
+Uncompressed=Unkomprimiert
+T4/Group 3 Fax=T4/Gruppe 3 Fax
+T6/Group 4 Fax=T6/Gruppe 4 Fax
+JPEG (old-style)=JPEG (alter Stil)
+JBIG Color=JBIG Farbe
+Sony ARW Compressed=Sony ARW Komprimiert
+Packed RAW=Gepacktes RAW
+Samsung SRW Compressed=Samsung SRW Komprimiert
+Samsung SRW Compressed 2=Samsung SRW Komprimiert 2
+Kodak KDC Compressed=Kodak KDC Komprimiert
+Nikon NEF Compressed=Nikon NEF Komprimiert
+Lossy JPEG=Verlustbehaftetes JPEG
+Kodak DCR Compressed=Kodak DCR Komprimiert
+Pentax PEF Compressed=Pentax PEF Komprimiert
+
+// Canon makernote fields
+Canon Macro mode=Canon Makromodus
+Canon Flash mode=Canon Blitzmodus
+Canon Continuous drive mode=Canon Mehrfachbildmodus
+Canon Focus Mode=Canon Fokusmodus
+Canon Image size=Canon Bildgrösse
+Canon Easy shooting mode=Canon Easy shooting-Modus
+Canon Digital Zoom=Canon Digitalzoom
+Canon Contrast=Canon Kontrast
+Canon Saturation=Canon Sättigung
+Canon Sharpness=Canon Schärfe
+Canon ISO Speed=Canon ISO-Belichtungseinstellung
+Canon Metering Mode=Canon Messmodus
+Canon Focus Type=Canon Fokustyp
+Canon AF point selected=Canon gewählter Autofokuspunkt
+Canon Exposure mode=Canon Belichtungsmodus
+Canon Flash Activity=Canon Blitzaktivität
+Canon White Balance=Canon Weissabgleich
+Canon Flash Bias=Canon Blitzstärkenabweichung
+Canon Image type=Canon Bildtyp
+Canon Firmware version=Canon Firmwareversion
+Canon Image number=Canon Bildnummer
+Canon Owner name=Canon Eignername
+Canon Camera serial number=Canon Seriennummer
+
+//GPS
+GPS Latitude=GPS geogr Breite
+GPS Longitude=GPS geogr Länge
+GPS Altitude=GPS Höhe
+GPS Timestamp=GPS Zeitstempel
+GPS Direction=GPS Richtung
+GPS Datestamp=GPS Datumsstempel
+
+//ExposureProgram
+unknown=Unbekannt
+manual control=Manuell
+normal program=Normales Programm
+aperture priority=Aperturpriorität
+shutter priority=Belichtungspriorität
+creative (slow program)=Kreativprogramm (langsam)
+action (high-speed)=Kreativprogramm (schnell)
+portrait mode=Hochformat
+landscape mode=Querformat
+
+//LightSource
+daylight=Tageslicht
+fluorescent=Fluoreszenzlicht
+tungsten=Wolfram
+flash=Blitz
+fine weather=Schönwetter
+cloudy weather=bewölkt
+shade=Schattig
+daylight fluorescent=Tageslicht-Fluoreszenzlicht
+day white fluorescent=Tagesweiss-Fluoreszenzlicht
+cool white fluorescent=Kaltweiss-Fluoreszenzlicht
+white fluorescent=Weiss-Fluoreszenzlicht
+standard light A=Standardlicht A
+standard light B=Standardlicht B
+standard light C=Standardlicht C
+ISO studio tungsten=ISO Studio Wolfram
+other=Anderes
+
+//Orientation
+Top left=Oben links
+Top right=Oben rechts
+Bottom right=Unten rechts
+Bottom left=Unten links
+Left top=Links oben
+Right top=Rechts oben
+Right bottom=Rechts unten
+Left bottom=Links unten
+
+//Flash
+not fired=Nicht ausgelöst
+fired=Ausgelöst
+forced on=Fest eingeschaltet
+forced off=Fest ausgeschaltet
+not fired, auto=Nicht ausgelöst, automatisch
+fired, auto=Ausgelöst, automatisch
+forced on, red eye=Fest eingeschaltet, rote Augen
+fired, auto, red eye=Ausgelöst, automatisch, rote Augen
+
+//MeteringMode
+average=Mittelwert
+center weighted average=Zentrum-gewichteter Mittelwert
+spot=Punkt
+multi-spot=Mehrpunkt
+pattern=Muster
+partial=Partiell
+
+//Resolution
+inch=Zoll
+centimeter=Zentimeter
+
+// YCbCrUnits
+centered=Zentriert
+co-sited=Co-Standort
+
+//SensingMethod
+not defined=nicht definiert
+one-chip color area sensor=Ein-Chip-Farbbereichsensor
+two-chip color area sensor=Zwei-Chip-Farbbereichsensor
+three-chip color area sensor=Drei-Chip-Farbbereichsensor
+color sequential area sensor=Farbsequenzbereichsensor
+trilinear sensor=Trilinearer Sensor
+color sequential linear sensor=Farbsequenz-linearer Sensor
+
+//ExposureMode
+auto exposure=Automatische Belichtung
+manual exposure=Manuelle Belichtung
+auto bracket=Automatische Begrenzung
+
+//WhiteBalance
+auto white balance=Automatischer Weissabgleich
+manual white balance=Manueller Weissabgleich
+
+//SceneCapture
+standard=Standard
+landscape=Querformat
+portrait=Hochformat
+night scene=Nachtszene
+
+//GainControl
+none=Kein(e)
+low gain up=low gain up
+high gain up=high gain up
+low gain down=low gain down
+high gain down=high gain down
+
+//Contrast
+normal=Normal
+soft=Weich
+hard=Hart
+
+//Saturation
+low saturation=Tiefe Sättigung
+high saturation=Hohe Sättigung
+
+//SubjectDistance
+macro=Makro
+close view=Nahansicht
+distant view=Fernansicht
+
+//CanonFlashMode
+auto=Automatisch
+on=Ein
+red-eye reduction=Rote Augen-Korrektur
+slow synchro=Langsame Synchronisation
+auto + red-eye reduction=Auto+Rote Augen-Korrektur
+on + red-eye reduction=Ein+Rote Augen-Korrektur
+external flash=Externer Blitz
+
+//CanonContinous
+single=Einzel
+continuous=Fortlaufend
+
+//CanonFocusMode
+One-Shot=Einzelbild
+AI Servo=AI Servo
+AI Focus=AI Fokus
+Manual Focus=Manueller Fokus
+
+// CanonImageSize
+Large=Gross
+Medium=Mittel
+Small=Klein
+
+//CanonEasyShooting
+Full Auto=Vollautomatisch
+Fast Shutter=Schneller Verschluss
+Slow Shutter=Langsamer Verschluss
+Night=Nacht
+B&W=Schwarzweiss
+Sepia=Sepia
+Sports=Sport
+Macro/Close-Up=Makro/Nahaufnahme
+Pan Focus=Pan-Fokus
+
+//CanonDigitalZoom
+No digital zoom=Kein Digitalzoom
+2X=2X
+4X=4X
+
+//CanonCSS
+High=Hoch
+Low=Niedrig
+
+//CanonMeteringMode
+Evaluative=Evaluativ
+Partial=Partiell
+Centre Weighted=Mittengewichtet
+
+//CanonFocusType
+Close-up=Nah
+Locked=Gesperrt
+
+//CanonAFSelect
+Auto Selected=Automatisch
+Right=Rechts
+Centre=Zentriert
+Left=Links
+
+//CanonExposureMode
+Easy shooting=Easy shooting
+Program=Programm
+Tv-priority=Zeitpriorität
+Av-priority=Blendenpriorität
+Manual=Manuell
+A-DEP=Tiefenschärfenautomatik
+
+//CanonFlashActivity
+Flash did not fire=Blitz nicht ausgelöst
+Flash fired=Blitz ausgelöst
+
+//CanonWhiteBalanceUnitsStr
+Sunny=Sonnig
+Cloudy=Bewölkt
+Tungsten=Wolfram
+Fluorescent=Fluoreszenz
+Flash=Blitz
+Custom=Benutzerdefiniert
+
+
+[FRA]
+Width=Largeur
+Height=Hauteur
+ColorDepth=Nbe de Couleurs (Bpp)
+DateTimeStr=Date & Heure
+Date=Date
+Time=Heure
+DateOriginal=Date Original
+DateDigitized=Date Digitalisée
+TimeDigitized=Heure Digitalisée
+ComponentConfiguration=Configuration du Composant
+ExifVersion=Version Exif
+ExposureBiasValue=Valeur du Biais
+ExposureProgram=Program d'exposition
+ExposureTimeFraction=Durée d'exposition (fraction)
+ExposureTimeNr=N° Exposition
+Flash=Flash
+FNumber=Luminosité objectif
+FocalLength=Focale
+ISO=ISO
+LightSource=Source de Lumière
+Make=Fabricant
+ApertureValue=Valeur d'ouverture
+MeteringMode=Mode de Dosage
+Model=Modèle
+Orientation=Orientation
+
+GPS Timestamp=GPS Heure
+GPS Datestamp=GPS Date
+
+[DAN]
+Width=Bredde
+Height=Højde
+ColorDepth=Farvedybde
+DateTimeStr=Dato og tid
+Date=Dato
+Time=Tid
+DateOriginal=Original dato
+TimeOriginal=Original tid
+DateDigitized=Digitalseret dato
+TimeDigitized=Digitaliseret tid
+ComponentConfiguration=Komponentkonfiguration
+CompressedBitsPerPixel=Komprimerede bits per pixel
+ExifVersion=Exif version
+ExposureBiasValue=Biasværdi for eksponering
+ExposureProgram=Eksponeringsprogram
+ExposureTimeFraction=Eksponeringstid (brøk)
+ExposureTimeNr=Eksponeringstid (decimal)
+Flash=Blitz
+FNumber=Blænde
+FocalLength=Fokuslængde
+ISO=ISO
+LightSource=Lyskilde
+Make=Fabrikat
+ApertureValue=Blænde
+MaxApertureValue=Største blænde
+MeteringMode=Målemetode
+Model=Model
+Orientation=Orientering
+
+BitsPerSample=BitsPerSample
+CompressedBitsPerPixel=KomprimeredeBitsPerPixel
+MaxApertureValue=MaksAperturVærdi
+ImageDescription=BilledBeskrivelse
+UserComment=BrugerKommentar
+XResolution=XOpløsning
+YResolution=YOpløsning
+ResolutionUnit=OpløsningsEnhed
+Software=Software
+Artist=Kunstner
+ShutterSpeed=LukkerHastighed
+YCbCrPositioning=YCbCrPositionering
+SensingMethod=MåleMetode
+ExposureMode=BelysningsTilstand
+WhiteBalance=HvidBalance
+DigitalZoomRatio=DigitalZoomRatio
+FocalLengthIn35mmFilm=FokuslængdeI35mmFilm
+SceneCaptureType=SceneOptagelsesType
+GainControl=GainKontrol
+Contrast=Kontrast
+Saturation=Farvemætning
+Sharpness=Skarphed
+SubjectDistanceRange=GenstandAfstandsOmråde
+
+Canon Macro mode=Canon Makrotilstand
+Canon Flash mode=Canon Blitztilstand
+Canon Continuous drive mode=Canon Multibilledetilstand
+Canon Focus Mode=Canon Fokustilstand
+Canon Image size=Canon Billedstørrelse
+Canon Easy shooting mode=Canon Easy shooting-tilstand
+Cannon Digital Zoom=Canon digital zoom
+Cannon Contrast=Canon kontrast
+Canon Saturation=Canon farvemætning
+Canon Sharpness=Canon skarphed
+Canon ISO Speed=Canon ISO hastighed
+Canon Metering Mode=Canon måletilstand
+Canon Focus Type=Canon fokustype
+Canon AF point selected=Canon autofokus valgt
+Canon Exposure mode=Canon eksponeringstilstand
+Canon Flash Activity=Canon blitzaktivitet
+Canon White Balance=Canon hvidbalance
+Canon Flash Bias=Canon blitzafvigelse
+Canon Image type=Canon billedtype
+Canon Firmware version=Canon firmwareversion
+Canon Image number=Canon billednummer
+Canon Owner name=Canon ejernavn
+Canon Camera serial number=Canon serienummer
+
+GPS Latitude=GPS geografisk Bredde
+GPS Longitude=GPS geografisk Længde
+GPS Altitude=GPS Højde
+GPS Timestamp=GPS tidsstempel
+GPS Direction=GPS Retning
+GPS Timestamp=GPS datostempel
+
+unknown=Ukendt
+manual control=Manuel kontrol
+normal program=Normalt program
+aperture priority=Blændeprioritet
+shutter priority=Lukkerprioritet
+creative (slow program)=Kreativt program (langsomt)
+action (high-speed)=Kreativt program (hurtigt)
+portrait mode=Portrætvisning
+landscape mode=Landskabsvisning
+
+daylight=Dagslys
+fluorescent=Fluorescerende lys
+tungsten=Wolfram
+flash=Blitz
+fine weather=Solskin
+cloudy weather=Overskyet
+shade=Skygge
+daylight fluorescent=Fluorescerende dagslys
+day white fluorescent=Fluorescerende hvidt dagslys
+cool white fluorescent=Fluorescerende koldt dagslys
+white fluorescent=Fluorescerende hvidt lys
+standard light A=Standardbelysning A
+standard light B=Standardbelysning B
+standard light C=Standardbelysning C
+ISO studio tungsten=ISO Studio Wolfram
+other=Andet
+
+Top left=Top venstre
+Top right=Top højre
+Bottom right=Bund højre
+Bottom left=Bund Venstre
+Left top=Venstre top
+Right top=Højre top
+Right bottom=Højre bund
+Left bottom=Venstre bund
+
+not fired=Ikke udløst
+fired=Udløst
+forced on=Tvunget til
+forced off=Tvunget fra
+not fired, auto=Ikke udløst, automatisk
+fired, auto=Udløst, automatisk
+forced on, red eye=Tvunget til, rødøjekorrektion
+fired, auto, red eye=Udløst, automatisk, rødøjekorrektion
+
+average=Gennemsnit
+center weighted average=Centervejet gennemsnit
+spot=Punkt
+multi-spot=Multipunkt
+pattern=Mønster
+partial=Delvist
+
+inch=tommer
+centimeter=Centimeter
+
+centered=Centreret
+co-sited=co-placeret
+
+not defined=Ikke defineret
+one-chip color area sensor=Områdefarvesensor med en chip
+two-chip color area sensor=Områdefarvesensor med to chips
+three-chip color area sensor=Områdefarvesensor med tre chips
+color sequential area sensor=Farvesekventiel områdesensor
+trilinear sensor=Trilinær sensor
+color sequential linear sensor=Farvesekventiel lineær sensor
+
+auto exposure=Automatisk eksponering
+manual exposure=Manuel eksponering
+auto bracket=Automatiske kantparenteser
+
+auto white balance=Automatisk hvidbalance
+manual white balance=Manuel hvidbalance
+
+standard=Standard
+landscape=Landskab
+portrait=Portræt
+night scene=Nattescene
+
+none=Ingen
+low gain up=Low gain up
+high gain up=High gain up
+low gain down=Low gain down
+high gain down=High gain down
+
+normal=Normal
+soft=Blød
+hard=Hård
+
+low saturation=Lav farvemætning
+high saturation=Høj farvemætning
+
+macro=Makro
+close view=Næroptagelse
+distant view=Fjernoptagelse
+
+auto=Automatisk
+on=Til
+red-eye reduction=Rødøjekorrektion
+slow synchro=Langsom synkronisering
+auto + red-eye reduction=Auto + rødøjekorrektion
+on + red-eye reduction=Til + rødøjekorrektion
+external flash=Ekstern blitz
+
+single=Enkel
+continuous=Vedvarende
+
+One-Shot=Enkeltbillede
+AI Servo=AI servo
+AI Focus=AI fokus
+Manual Focus=Manuel fokus
+
+Large=Stor
+Medium=Middel
+Small=Lille
+
+Full Auto=Fuldautomatisk
+Fast Shutter=Hurtig lukkerhastighed
+Slow Shutter=Langsom lukkerhastighed
+Night=Nat
+B&W=Sort/hvid
+Sepia=Sepia
+Sports=Sport
+Macro/Close-Up=Makro/nærbillede
+Pan Focus=Pan fokus
+
+No digital zoom=Ingen digital zoom
+2X=2X
+4X=4X
+
+High=Høj
+Low=Lav
+
+Evaluative=Evaluerende
+Partial=Partiel
+Centre Weighted=Centervejet
+
+Close-up=Nær
+Locked=Låst
+
+Auto Selected=Valgt automatisk
+Right=Højre
+Centre=Centreret
+Left=Venstre
+
+Easy shooting=Easy shooting
+Program=Program
+Tv-priority=Lukkerprioritet
+Av-priority=Blændeprioritet
+Manual=Manuel
+A-DEP=Dybdeskarphedsautomatik
+
+Flash did not fire=Blitz blev ikke udløst
+Flash fired=Blitz udløst
+
+Sunny=Solskin
+Cloudy=Overskyet
+Tungsten=Wolfram
+Fluorescent=Fluorescerende
+Flash=Blitz
+Custom=Brugerdefineret
