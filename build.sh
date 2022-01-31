@@ -22,7 +22,7 @@ lazbuild wcx/diskdir/src/diskdir.lpi
 install -m 644 wcx/diskdir/diskdir.wcx release/wcx/diskdir/
 install -m 644 wcx/diskdir/*.txt       release/wcx/diskdir/
 
-make -C wdx/exif
+make -C wdx/exif clean all
 install -m 644 wdx/exif/exif.wdx release/wdx/exif/
 install -m 644 wdx/exif/*.txt    release/wdx/exif/
 
@@ -31,16 +31,16 @@ install -m 644 wdx/ooinfo/ooinfo.wdx release/wdx/ooinfo/
 install -m 644 wdx/ooinfo/ooinfo.lng release/wdx/ooinfo/
 install -m 644 wdx/ooinfo/*.txt      release/wdx/ooinfo/
 
-make -C wdx/ooxml/src
+make -C wdx/ooxml/src clean all
 install -m 644 wdx/ooxml/ooxml.wdx release/wdx/ooxml/
 install -m 644 wdx/ooxml/*.txt     release/wdx/ooxml/
 
-make -C wdx/similarity/src
+make -C wdx/similarity/src clean all
 install -m 644 wdx/similarity/similarity.wdx release/wdx/similarity/
 install -m 644 wdx/similarity/leven.ini      release/wdx/similarity/
 install -m 644 wdx/similarity/readme.txt     release/wdx/similarity/
 
-make -C wlx/gstplayer/src
+make -C wlx/gstplayer/src clean all
 install -m 644 wlx/gstplayer/gstplayer.wlx release/wlx/gstplayer/
 install -m 644 wlx/gstplayer/readme.txt    release/wlx/gstplayer/
 
