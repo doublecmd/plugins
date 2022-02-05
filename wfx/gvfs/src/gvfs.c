@@ -1939,32 +1939,40 @@ BOOL DCPCALL FsSetTime(char* RemoteName,FILETIME *CreationTime,
     return FALSE;
   }
 
-  ctime = FileTimeToUnixTime(CreationTime);
-  atime = FileTimeToUnixTime(LastAccessTime);
-  mtime = FileTimeToUnixTime(LastWriteTime);
-  
-  error = NULL;
-  g_file_set_attribute_uint64 (f, G_FILE_ATTRIBUTE_TIME_MODIFIED, mtime, G_FILE_QUERY_INFO_NONE, NULL, &error);
-  if (error) {
-    g_print ("(EE) FsSetTime: g_file_set_attribute_uint64() error: %s\n", error->message);
-    g_error_free (error);
-    g_object_unref (f);
-    return FALSE;
+  if (LastWriteTime != NULL)
+  {
+    error = NULL;
+    mtime = FileTimeToUnixTime(LastWriteTime);
+    g_file_set_attribute_uint64 (f, G_FILE_ATTRIBUTE_TIME_MODIFIED, mtime, G_FILE_QUERY_INFO_NONE, NULL, &error);
+    if (error) {
+      g_print ("(EE) FsSetTime: g_file_set_attribute_uint64() error: %s\n", error->message);
+      g_error_free (error);
+      g_object_unref (f);
+      return FALSE;
+    }
   }
-  error = NULL;
-  g_file_set_attribute_uint64 (f, G_FILE_ATTRIBUTE_TIME_ACCESS, atime, G_FILE_QUERY_INFO_NONE, NULL, &error);
-  if (error) {
-    g_print ("(EE) FsSetTime: g_file_set_attribute_uint64() error: %s\n", error->message);
-    g_error_free (error);
-    /*  Silently drop the error, atime is not commonly supported on most systems  */
+  if (LastAccessTime != NULL)
+  {
+    error = NULL;
+    atime = FileTimeToUnixTime(LastAccessTime);
+    g_file_set_attribute_uint64 (f, G_FILE_ATTRIBUTE_TIME_ACCESS, atime, G_FILE_QUERY_INFO_NONE, NULL, &error);
+    if (error) {
+      g_print ("(EE) FsSetTime: g_file_set_attribute_uint64() error: %s\n", error->message);
+      g_error_free (error);
+      /*  Silently drop the error, atime is not commonly supported on most systems  */
+    }
   }
-  error = NULL;
-  g_file_set_attribute_uint64 (f, G_FILE_ATTRIBUTE_TIME_CREATED, ctime, G_FILE_QUERY_INFO_NONE, NULL, &error);
-  if (error) {
-    g_print ("(EE) FsSetTime: g_file_set_attribute_uint64() error: %s\n", error->message);
-    g_error_free (error);
-    /*  Silently drop the error, ctime is not commonly supported on most systems  */
-  }  
+  if (CreationTime != NULL)
+  {
+    error = NULL;
+    ctime = FileTimeToUnixTime(CreationTime);
+    g_file_set_attribute_uint64 (f, G_FILE_ATTRIBUTE_TIME_CREATED, ctime, G_FILE_QUERY_INFO_NONE, NULL, &error);
+    if (error) {
+      g_print ("(EE) FsSetTime: g_file_set_attribute_uint64() error: %s\n", error->message);
+      g_error_free (error);
+      /*  Silently drop the error, ctime is not commonly supported on most systems  */
+    }
+  }
   g_object_unref (f);
   return TRUE;
 }
