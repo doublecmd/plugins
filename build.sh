@@ -20,7 +20,7 @@ mkdir -p release/wfx/gvfs
 mkdir -p release/wlx/gstplayer
 mkdir -p release/wlx/fileinfo
 
-lazbuild wcx/diskdir/src/diskdir.lpi
+make -C wcx/diskdir/src clean all
 install -m 644 wcx/diskdir/diskdir.wcx release/wcx/diskdir/
 install -m 644 wcx/diskdir/*.txt       release/wcx/diskdir/
 
@@ -29,7 +29,7 @@ install -m 644 wdx/exif/exif.wdx release/wdx/exif/
 install -m 644 wdx/exif/exif.lng release/wdx/exif/
 install -m 644 wdx/exif/*.txt    release/wdx/exif/
 
-lazbuild wdx/ooinfo/src/OOInfo.lpi
+make -C  wdx/ooinfo/src clean all
 install -m 644 wdx/ooinfo/ooinfo.wdx release/wdx/ooinfo/
 install -m 644 wdx/ooinfo/ooinfo.lng release/wdx/ooinfo/
 install -m 644 wdx/ooinfo/*.txt      release/wdx/ooinfo/
@@ -43,7 +43,7 @@ install -m 644 wdx/similarity/similarity.wdx release/wdx/similarity/
 install -m 644 wdx/similarity/leven.ini      release/wdx/similarity/
 install -m 644 wdx/similarity/readme.txt     release/wdx/similarity/
 
-lazbuild wdx/xpi_wdx/src/xpi_wdx.lpi
+make -C  wdx/xpi_wdx/src clean all
 install -m 644 wdx/xpi_wdx/xpi_wdx.wdx release/wdx/xpi_wdx/
 
 make -C wfx/gvfs/src clean all
