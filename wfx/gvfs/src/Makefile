@@ -1,6 +1,6 @@
 # compiler options
 CC = gcc
-CFLAGS =-I. -I/usr/include -I../../../../sdk \
+CFLAGS =-I. -I/usr/include -I../../../sdk \
 	-Wall -fPIC -O2 -g \
 	-DG_DISABLE_DEPRECATED -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_GNU_SOURCE
 
@@ -15,8 +15,8 @@ VFS_OBJECTS=gvfs.o
 all shared static: gvfs.wfx
 
 gvfs.wfx: $(VFS_OBJECTS)
-	$(CC) -shared -o ../lib/gvfs.wfx $(VFS_OBJECTS) $(CFLAGS) `pkg-config glib-2.0 gio-2.0 --libs`
+	$(CC) -shared -o ../gvfs.wfx $(VFS_OBJECTS) $(CFLAGS) `pkg-config glib-2.0 gio-2.0 --libs`
 
 clean: 
 	rm -f *.o *.d *.gch
-	rm -f ../lib/gvfs.wfx
+	rm -f ../gvfs.wfx
