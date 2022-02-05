@@ -1478,14 +1478,12 @@ BOOL RemoteFindNext(HANDLE Hdl, WIN32_FIND_DATAA *FindData)
 {
   PListRec ListRec;
   struct TVFSGlobs *globs;
-  char *sDir;
   GError *error;
   GFileInfo *info;
   GFile *f;
   g_print ("(EE) RemoteFindNext: Enter\n");
   ListRec = (PListRec) Hdl;
   globs = ListRec->globs;
-  sDir =  ExtractRemoteFileName(ListRec->Path);
 
   if (globs->file == NULL) {
     g_print ("(EE) RemoteFindNext: globs->file == NULL !\n");
