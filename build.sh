@@ -15,6 +15,8 @@ mkdir -p release/wdx/ooxml
 mkdir -p release/wdx/mediainfo
 mkdir -p release/wdx/translitwdx
 mkdir -p release/wdx/similarity
+mkdir -p release/wdx/xpi_wdx
+mkdir -p release/wfx/gvfs
 mkdir -p release/wlx/gstplayer
 mkdir -p release/wlx/fileinfo
 
@@ -40,6 +42,12 @@ make -C wdx/similarity/src clean all
 install -m 644 wdx/similarity/similarity.wdx release/wdx/similarity/
 install -m 644 wdx/similarity/leven.ini      release/wdx/similarity/
 install -m 644 wdx/similarity/readme.txt     release/wdx/similarity/
+
+lazbuild wdx/xpi_wdx/src/xpi_wdx.lpi
+install -m 644 wdx/xpi_wdx/xpi_wdx.wdx release/wdx/xpi_wdx/
+
+make -C wfx/gvfs/src clean all
+install -m 644 wfx/gvfs/gvfs.wfx release/wfx/gvfs/
 
 make -C wlx/gstplayer/src clean all
 install -m 644 wlx/gstplayer/gstplayer.wlx release/wlx/gstplayer/
