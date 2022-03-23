@@ -12,7 +12,6 @@ mkdir -p release/wcx/diskdir
 mkdir -p release/wdx/exif
 mkdir -p release/wdx/ooinfo
 mkdir -p release/wdx/ooxml
-mkdir -p release/wdx/mediainfo
 mkdir -p release/wdx/translitwdx
 mkdir -p release/wdx/similarity
 mkdir -p release/wdx/xpi_wdx
@@ -58,7 +57,6 @@ install -m 644 wlx/fileinfo/fileinfo.wlx* release/wlx/fileinfo/
 install -m 755 wlx/fileinfo/fileinfo.sh   release/wlx/fileinfo/
 install -m 644 wlx/fileinfo/*.txt         release/wlx/fileinfo/
 
-install -m 644 wdx/mediainfo/luajit/*.lua      release/wdx/mediainfo/
 install -m 644 wdx/translitwdx/translitwdx.lua release/wdx/translitwdx/
 install -m 644 wdx/translitwdx/readme.txt      release/wdx/translitwdx/
 
