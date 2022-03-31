@@ -12,10 +12,7 @@ Get some technical information about video files. Cross-platform.
 
 LuaJIT:
 - Windows:
-  replace lua5.1.dll
-  http://doublecmd.sourceforge.net/test/luajit_win32.zip for 32-bit version of DC,
-  http://doublecmd.sourceforge.net/test/luajit_win64.zip for 64-bit version of DC
-  (thanks for the binary files to Alexander Koblov aka Alexx2000).
+  Double Commander distributives for Windows contain Lua DLL from LuaJIT project by default (since DC 0.9.7).
 - Linux:
   1) find LuaJIT package, for example: "libluajit-5.1-2" (Debian/Ubuntu and Debian/Ubuntu-based), "luajit" (Arch Linux). Or compile it.
   2) close DC, open config file doublecmd.xml and change option <PathToLibrary>.
