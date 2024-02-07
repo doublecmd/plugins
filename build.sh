@@ -9,6 +9,7 @@ cd $(dirname "$0")
 
 rm -rf release
 mkdir -p release/wcx/diskdir
+mkdir -p release/wdx/crx_wdx
 mkdir -p release/wdx/exif
 mkdir -p release/wdx/ooinfo
 mkdir -p release/wdx/ooxml
@@ -23,6 +24,9 @@ mkdir -p release/wlx/fileinfo
 make -C wcx/diskdir/src clean all
 install -m 644 wcx/diskdir/diskdir.wcx release/wcx/diskdir/
 install -m 644 wcx/diskdir/*.txt       release/wcx/diskdir/
+
+make -C wdx/crx_wdx clean all
+install -m 644 wdx/crx_wdx/crx_wdx.wdx release/wdx/crx_wdx/
 
 make -C wdx/exif clean all
 install -m 644 wdx/exif/exif.wdx release/wdx/exif/
