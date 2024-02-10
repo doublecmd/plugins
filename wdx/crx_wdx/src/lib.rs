@@ -41,39 +41,42 @@ fn parse(file_name: &String) -> io::Result<()>
     let mut offset: u32;
     let mut file = File::open(file_name)?;
 
-    let mut buffer = [0; 4];
-
-    file.read(&mut buffer[..])?;
-
-    if (buffer[0] != 0x43) || (buffer[1] != 0x72) || (buffer[2] != 0x32)|| (buffer[3] != 0x34)
+    if file_name.to_lowercase().ends_with(".crx")
     {
-        return Err(io::Error::from_raw_os_error(0));
-    }
+        let mut buffer = [0; 4];
 
-    file.read(&mut buffer[..])?;
-
-    let version = u32::from_le_bytes(buffer);
-
-    // println!("Version: {}",  version);
-
-    if version == 3
-    {
         file.read(&mut buffer[..])?;
-        offset = u32::from_le_bytes(buffer);
-    }
-    else if version == 2
-    {
-        file.read(&mut buffer[..])?;
-        offset = u32::from_le_bytes(buffer);
-        file.read(&mut buffer[..])?;
-        offset += u32::from_le_bytes(buffer);
-    }
-    else {
-        return Err(io::Error::from_raw_os_error(0));
-    }
-    // println!("Offset: {}",  offset);
 
-    file.seek(SeekFrom::Current(offset as i64))?;
+        if (buffer[0] != 0x43) || (buffer[1] != 0x72) || (buffer[2] != 0x32)|| (buffer[3] != 0x34)
+        {
+            return Err(io::Error::from_raw_os_error(0));
+        }
+
+        file.read(&mut buffer[..])?;
+
+        let version = u32::from_le_bytes(buffer);
+
+        // println!("Version: {}",  version);
+
+        if version == 3
+        {
+            file.read(&mut buffer[..])?;
+            offset = u32::from_le_bytes(buffer);
+        }
+        else if version == 2
+        {
+            file.read(&mut buffer[..])?;
+            offset = u32::from_le_bytes(buffer);
+            file.read(&mut buffer[..])?;
+            offset += u32::from_le_bytes(buffer);
+        }
+        else {
+            return Err(io::Error::from_raw_os_error(0));
+        }
+        // println!("Offset: {}",  offset);
+
+        file.seek(SeekFrom::Current(offset as i64))?;
+    }
 
     let mut zip = zip::ZipArchive::new(file)?;
 
@@ -168,5 +171,5 @@ pub unsafe extern "system" fn ContentGetValue(file_name: *const c_char, field_in
 #[no_mangle]
 pub unsafe extern "system" fn ContentGetDetectString(detect_string: *mut c_char, maxlen: i32)
 {
-    copy_rust_str_to_c_arr("EXT=\"CRX\"", detect_string, maxlen as usize);
+    copy_rust_str_to_c_arr("(EXT=\"CRX\") | (EXT=\"XPI\")", detect_string, maxlen as usize);
 }
