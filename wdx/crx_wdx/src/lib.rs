@@ -13,8 +13,11 @@ const FT_NOSUCHFIELD: i32 = -1;
 const FT_FILEERROR: i32 = -2;
 const FT_FIELDEMPTY: i32 = -3;
 
-const FIELD_ARRAY: [(&str, &str, i32); 6] = [("Name", "name", FT_STRING), ("Version", "version", FT_STRING), ("Description", "description", FT_STRING),
-                                             ("Author", "author", FT_STRING), ("ShortName", "short_name", FT_STRING), ("VersionName", "version_name", FT_STRING)];
+const FIELD_ARRAY: [(&str, &str, i32); 11] = [("Manifest version", "manifest_version", FT_STRING), ("Name", "name", FT_STRING), ("Version", "version", FT_STRING),
+                                              ("Description", "description", FT_STRING), ("Author", "author", FT_STRING), ("Short name", "short_name", FT_STRING),
+                                              ("Version name", "version_name", FT_STRING), ("Chrome version", "minimum_chrome_version", FT_STRING),
+                                              ("Home page", "homepage_url", FT_STRING), ("Update URL", "update_url", FT_STRING),
+                                              ("Permissions", "permissions", FT_STRING)];
 
 static mut FILE_NAME: String = String::new();
 static mut JSON: serde_json::Value = serde_json::Value::Null;
@@ -126,10 +129,32 @@ pub unsafe extern "system" fn ContentGetValue(file_name: *const c_char, field_in
     unsafe {
         match JSON.get(FIELD_ARRAY[index].1)
         {
-            Some(str) => value = match str.as_str()
+            Some(val) => value =
             {
-                Some(s) => s.to_string(),
-                None => return FT_FIELDEMPTY,
+                if val.is_array()
+                {
+                     val.to_string()
+                }
+                else if val.is_u64()
+                {
+                    match val.as_u64()
+                    {
+                        Some(u) => u.to_string(),
+                        None => return FT_FIELDEMPTY,
+                    }
+                }
+                else if val.is_string()
+                {
+                    match val.as_str()
+                    {
+                        Some(s) => s.to_string(),
+                        None => return FT_FIELDEMPTY,
+                    }
+                }
+                else
+                {
+                    return FT_FIELDEMPTY;
+                }
             },
             None => return FT_FIELDEMPTY
         }
