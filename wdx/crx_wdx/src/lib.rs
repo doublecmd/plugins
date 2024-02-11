@@ -41,24 +41,28 @@ unsafe fn copy_rust_str_to_c_arr(s: &str, arr: *mut c_char, known_len: usize)
 
 fn parse_locale(mut zip: ZipArchive<File>) -> io::Result<()>
 {
+    let value: Option<&serde_json::Value>;
     unsafe {
-        match JSON.get("default_locale")
-        {
-            Some(val) =>
+        value = JSON.get("default_locale");
+    }
+    match value
+    {
+        Some(val) =>
+            {
+                match val.as_str()
                 {
-                    match val.as_str()
-                    {
-                        Some(s) =>
-                            {
-                                let st = "_locales/".to_string().add(s).add("/messages.json");
-                                let file = zip.by_name(&st)?;
-                                LOCALES =  serde_json::from_reader(file)?;
-                            },
-                        None => {}
-                    }
-                },
-            None => {}
-        }
+                    Some(s) =>
+                        {
+                            let st = "_locales/".to_string().add(s).add("/messages.json");
+                            let file = zip.by_name(&st)?;
+                            unsafe {
+                                LOCALES = serde_json::from_reader(file)?;
+                            }
+                        },
+                    None => {}
+                }
+            },
+        None => {}
     }
     Ok(())
 }
@@ -121,33 +125,43 @@ fn parse(file_name: &String) -> io::Result<()>
 
 fn get_locale_str(str: String) -> String
 {
-    unsafe {
-        if str.starts_with("__MSG_") & str.ends_with("__") & (LOCALES != serde_json::Value::Null)
-        {
-            let mut ss: String = str.chars().skip(6).take(str.len() - 8).collect();
-
-            if ss.len() == 0
+    if str.starts_with("__MSG_") & str.ends_with("__")
+    {
+        unsafe {
+            if LOCALES == serde_json::Value::Null
             {
                 return str;
             }
-            ss.insert(0, '/');
-            ss.push_str("/message");
-
-            match LOCALES.pointer(&ss)
-            {
-                Some(val) =>
-                    {
-                        match val.as_str()
-                        {
-                            Some(s) => s.to_string(),
-                            None => str
-                        }
-                    },
-                None => str
-            }
-        } else {
-            str
         }
+
+        let mut ss: String = str.chars().skip(6).take(str.len() - 8).collect();
+
+        if ss.len() == 0
+        {
+            return str;
+        }
+        ss.insert(0, '/');
+        ss.push_str("/message");
+
+        let value: Option<&serde_json::Value>;
+        unsafe {
+            value = LOCALES.pointer(&ss);
+        }
+
+        match value
+        {
+            Some(val) =>
+                {
+                    match val.as_str()
+                    {
+                        Some(s) => s.to_string(),
+                        None => str
+                    }
+                },
+            None => str
+        }
+    } else {
+        str
     }
 }
 
@@ -169,9 +183,8 @@ pub unsafe extern "system" fn ContentGetSupportedField(field_index: i32, field_n
 #[no_mangle]
 pub unsafe extern "system" fn ContentGetValue(file_name: *const c_char, field_index: i32, _unit_index: i32, field_value: *mut c_char, maxlen: i32, _flags: i32) -> i32
 {
-
     let index = field_index as usize;
-    
+
     if (field_index < 0) || (index >= FIELD_ARRAY.len())
     {
         return FT_NOSUCHFIELD;
@@ -188,15 +201,17 @@ pub unsafe extern "system" fn ContentGetValue(file_name: *const c_char, field_in
             return FT_FILEERROR;
         }
     }
-
+    let result: Option<&serde_json::Value>;
     unsafe {
-        match JSON.get(FIELD_ARRAY[index].1)
-        {
-            Some(val) => value =
+        result = JSON.get(FIELD_ARRAY[index].1)
+    }
+    match result
+    {
+        Some(val) => value =
             {
                 if val.is_array()
                 {
-                     val.to_string()
+                    val.to_string()
                 }
                 else if val.is_u64()
                 {
@@ -219,12 +234,11 @@ pub unsafe extern "system" fn ContentGetValue(file_name: *const c_char, field_in
                     return FT_FIELDEMPTY;
                 }
             },
-            None => return FT_FIELDEMPTY
-        }
-       
-        copy_rust_str_to_c_arr(&value, field_value, maxlen as usize);
+        None => return FT_FIELDEMPTY
     }
-  
+
+    copy_rust_str_to_c_arr(&value, field_value, maxlen as usize);
+
     FIELD_ARRAY[index].2
 }
 
