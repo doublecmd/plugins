@@ -4,6 +4,8 @@ use std::io::SeekFrom;
 use std::io::Read;
 use core::ffi::c_char;
 use std::ffi::CStr;
+use std::ops::Add;
+use zip::ZipArchive;
 
 const FT_NOMOREFIELDS: i32 = 0;
 const FT_STRING: i32 = 8;
@@ -21,6 +23,7 @@ const FIELD_ARRAY: [(&str, &str, i32); 11] = [("Manifest version", "manifest_ver
 
 static mut FILE_NAME: String = String::new();
 static mut JSON: serde_json::Value = serde_json::Value::Null;
+static mut LOCALES: serde_json::Value = serde_json::Value::Null;
 
 unsafe fn copy_rust_str_to_c_arr(s: &str, arr: *mut c_char, known_len: usize)
 {
@@ -34,6 +37,30 @@ unsafe fn copy_rust_str_to_c_arr(s: &str, arr: *mut c_char, known_len: usize)
         std::ptr::copy_nonoverlapping(our_ptr, arr.cast(), len);
         *arr.add(len) = b'\0' as _;
     }
+}
+
+fn parse_locale(mut zip: ZipArchive<File>) -> io::Result<()>
+{
+    unsafe {
+        match JSON.get("default_locale")
+        {
+            Some(val) =>
+                {
+                    match val.as_str()
+                    {
+                        Some(s) =>
+                            {
+                                let st = "_locales/".to_string().add(s).add("/messages.json");
+                                let file = zip.by_name(&st)?;
+                                LOCALES =  serde_json::from_reader(file)?;
+                            },
+                        None => {}
+                    }
+                },
+            None => {}
+        }
+    }
+    Ok(())
 }
 
 fn parse(file_name: &String) -> io::Result<()>
@@ -87,8 +114,41 @@ fn parse(file_name: &String) -> io::Result<()>
     unsafe {
         JSON = serde_json::from_reader(file)?;
     }
+    let _ = parse_locale(zip);
 
     Ok(())
+}
+
+fn get_locale_str(str: String) -> String
+{
+    unsafe {
+        if str.starts_with("__MSG_") & str.ends_with("__") & (LOCALES != serde_json::Value::Null)
+        {
+            let mut ss: String = str.chars().skip(6).take(str.len() - 8).collect();
+
+            if ss.len() == 0
+            {
+                return str;
+            }
+            ss.insert(0, '/');
+            ss.push_str("/message");
+
+            match LOCALES.pointer(&ss)
+            {
+                Some(val) =>
+                    {
+                        match val.as_str()
+                        {
+                            Some(s) => s.to_string(),
+                            None => str
+                        }
+                    },
+                None => str
+            }
+        } else {
+            str
+        }
+    }
 }
 
 #[no_mangle]
@@ -150,7 +210,7 @@ pub unsafe extern "system" fn ContentGetValue(file_name: *const c_char, field_in
                 {
                     match val.as_str()
                     {
-                        Some(s) => s.to_string(),
+                        Some(s) => get_locale_str(s.to_string()),
                         None => return FT_FIELDEMPTY,
                     }
                 }
