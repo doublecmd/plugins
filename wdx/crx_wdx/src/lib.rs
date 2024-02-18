@@ -4,8 +4,8 @@ use std::io::SeekFrom;
 use std::io::Read;
 use core::ffi::c_char;
 use std::ffi::CStr;
-use std::ops::Add;
 use zip::ZipArchive;
+use sys_locale::get_locale;
 
 const FT_NOMOREFIELDS: i32 = 0;
 const FT_STRING: i32 = 8;
@@ -23,7 +23,7 @@ const FIELD_ARRAY: [(&str, &str, i32); 11] = [("Manifest version", "manifest_ver
 
 static mut FILE_NAME: String = String::new();
 static mut JSON: serde_json::Value = serde_json::Value::Null;
-static mut LOCALES: serde_json::Value = serde_json::Value::Null;
+static mut MESSAGES: serde_json::Value = serde_json::Value::Null;
 
 unsafe fn copy_rust_str_to_c_arr(s: &str, arr: *mut c_char, known_len: usize)
 {
@@ -53,11 +53,33 @@ fn parse_locale(mut zip: ZipArchive<File>) -> io::Result<()>
                 {
                     Some(s) =>
                         {
-                            let st = "_locales/".to_string().add(s).add("/messages.json");
-                            let file = zip.by_name(&st)?;
-                            unsafe {
-                                LOCALES = serde_json::from_reader(file)?;
+                            const MSG: &str = "_locales/{}/messages.json";
+
+                            let mut locale = get_locale().unwrap_or_else(|| s.to_string());
+                            locale = locale.replace("-", "_");
+
+                            let mut lng = MSG.replace("{}", &locale);
+                            let mut res = zip.by_name(&lng);
+                            if res.is_err()
+                            {
+                                std::mem::drop(res);
+                                let loc: Vec<&str> = locale.split('_').collect();
+                                lng = MSG.replace("{}", &loc[0]);
+                                res = zip.by_name(&lng);
+                                if res.is_err()
+                                {
+                                    std::mem::drop(res);
+                                    lng = MSG.replace("{}", &s);
+                                    res = zip.by_name(&lng);
+                                }
                             }
+                           if res.is_ok()
+                           {
+                               let file = res.unwrap();
+                               unsafe {
+                                   MESSAGES = serde_json::from_reader(file)?;
+                               }
+                           }
                         },
                     None => {}
                 }
@@ -128,7 +150,7 @@ fn get_locale_str(str: String) -> String
     if str.starts_with("__MSG_") & str.ends_with("__")
     {
         unsafe {
-            if LOCALES == serde_json::Value::Null
+            if MESSAGES == serde_json::Value::Null
             {
                 return str;
             }
@@ -145,7 +167,7 @@ fn get_locale_str(str: String) -> String
 
         let value: Option<&serde_json::Value>;
         unsafe {
-            value = LOCALES.pointer(&ss);
+            value = MESSAGES.pointer(&ss);
         }
 
         match value
