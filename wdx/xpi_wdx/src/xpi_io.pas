@@ -29,14 +29,14 @@ interface
 uses
   Classes, SysUtils, xpi_def;
 
-function ParseInsatallManifest(FileName: PAnsiChar; out InstallManifest: TInstallManifest): Boolean;
+function ParseInsatallManifest(FileName: PAnsiChar; var InstallManifest: TInstallManifest): Boolean;
 
 implementation
 
 uses
   Unzip, ZipUtils, DOM, XMLRead;
 
-function ExtractInstallManifest(FileName: PAnsiChar; out MemoryStream: TMemoryStream): Boolean;
+function ExtractInstallManifest(FileName: PAnsiChar; var MemoryStream: TMemoryStream): Boolean;
 var
   xpiFile: unzFile = nil;
   rdfInfo: unz_file_info;
@@ -125,7 +125,7 @@ begin
     end;
 end;
 
-function ParseInsatallManifest(FileName: PAnsiChar; out InstallManifest: TInstallManifest): Boolean;
+function ParseInsatallManifest(FileName: PAnsiChar; var InstallManifest: TInstallManifest): Boolean;
 var
   I: LongWord;
   MemoryStream: TMemoryStream = nil;
@@ -136,7 +136,7 @@ begin
   Result:= False;
   MemoryStream:= TMemoryStream.Create;
   try
-    if ExtractInstallManifest(FileName, MemoryStream) then;
+    if ExtractInstallManifest(FileName, MemoryStream) then
     begin
       MemoryStream.Position:= 0;
       ReadXMLFile(Doc, MemoryStream);
