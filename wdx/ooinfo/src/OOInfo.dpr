@@ -109,9 +109,6 @@ var
   PTime: PTimeFormat;
   //s, sAll: string;
 begin
-  if (flags and CONTENT_DELAYIFSLOW)>0 then
-    begin Result:= FT_DELAYED; Exit end;
-
   (*
   //Text field
   if (FieldIndex=Pred(_FieldsNum)) then
