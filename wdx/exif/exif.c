@@ -299,29 +299,17 @@ char* strlcpy(char* dst,const char* src,int maxlen)     // This function assumes
 	return dst;
 }
 
-#define INT_DIGITS 19		/* enough for 64 bit integer */
-
-char *itoa(i)
-     int i;
+static char* itoa(int value, char* str, int base)
 {
-  /* Room for INT_DIGITS digits, - and '\0' */
-  static char buf[INT_DIGITS + 2];
-  char *p = buf + INT_DIGITS + 1;	/* points to terminating '\0' */
-  if (i >= 0) {
-    do {
-      *--p = '0' + (i % 10);
-      i /= 10;
-    } while (i != 0);
-    return p;
+  if (base == 10)
+  {
+    sprintf(str, "%d", value);
   }
-  else {			/* i < 0 */
-    do {
-      *--p = '0' - (i % 10);
-      i /= 10;
-    } while (i != 0);
-    *--p = '-';
+  else if (base == 16)
+  {
+    sprintf(str, "%x", value);
   }
-  return p;
+  return str;
 }
 
 int DCPCALL ContentGetDetectString(char* DetectString,int maxlen)
