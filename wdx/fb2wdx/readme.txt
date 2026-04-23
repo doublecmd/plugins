@@ -1,5 +1,5 @@
 fb2wdx.lua
-2020.09.11
+2026.04.23
 
 Get some FictionBook2 (FB2) information (see "4. Fields" below).
 Cross-platform.
@@ -100,3 +100,5 @@ Original (paper) book info:
 Extra:
 - Custom info
     b: exists or not.
+- Custom info (text)
+    s: custom info as text for searching files using plugins.
