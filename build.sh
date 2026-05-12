@@ -88,6 +88,14 @@ install -m 644 wlx/mpv_wayland/build/mpv_wayland.wlx release/wlx/mpv_wayland/
 install -m 644 wlx/mpv_wayland/*.md release/wlx/mpv_wayland/
 install -m 644 wlx/mpv_wayland/*.png release/wlx/mpv_wayland/
 
+# kate
+mkdir -p release/wlx/kate
+mkdir -p wlx/kate/build
+(cd wlx/kate/build && cmake .. && make)
+install -m 644 wlx/kate/build/rich_editor_qt.wlx release/wlx/kate/
+install -m 644 wlx/kate/*.md release/wlx/kate/
+install -m 644 wlx/kate/*.png release/wlx/kate/
+
 pushd release
 tar -czpf ../plugins-$(date +%y.%m.%d)-$ARCH.tar.gz *
 popd
