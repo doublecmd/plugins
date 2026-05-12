@@ -66,6 +66,15 @@ install -m 644 wdx/mediainfo/luajit/*.lua      release/wdx/mediainfo/
 install -m 644 wdx/translitwdx/translitwdx.lua release/wdx/translitwdx/
 install -m 644 wdx/translitwdx/readme.txt      release/wdx/translitwdx/
 
+
+# logview
+mkdir -p release/wlx/logview
+mkdir -p wlx/logview/build
+(cd wlx/logview/build && cmake .. && make)
+install -m 644 wlx/logview/build/logviewer_wlx.wlx release/wlx/logview/
+install -m 644 wlx/logview/*.md release/wlx/logview/
+install -m 644 wlx/logview/*.png release/wlx/logview/
+
 pushd release
 tar -czpf ../plugins-$(date +%y.%m.%d)-$ARCH.tar.gz *
 popd
