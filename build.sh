@@ -66,6 +66,15 @@ install -m 644 wdx/mediainfo/luajit/*.lua      release/wdx/mediainfo/
 install -m 644 wdx/translitwdx/translitwdx.lua release/wdx/translitwdx/
 install -m 644 wdx/translitwdx/readme.txt      release/wdx/translitwdx/
 
+
+# kate
+mkdir -p release/wlx/kate
+mkdir -p wlx/kate/build
+(cd wlx/kate/build && cmake .. && make)
+install -m 644 wlx/kate/build/rich_editor_qt.wlx release/wlx/kate/
+install -m 644 wlx/kate/*.md release/wlx/kate/
+install -m 644 wlx/kate/*.png release/wlx/kate/
+
 pushd release
 tar -czpf ../plugins-$(date +%y.%m.%d)-$ARCH.tar.gz *
 popd
