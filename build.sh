@@ -66,6 +66,15 @@ install -m 644 wdx/mediainfo/luajit/*.lua      release/wdx/mediainfo/
 install -m 644 wdx/translitwdx/translitwdx.lua release/wdx/translitwdx/
 install -m 644 wdx/translitwdx/readme.txt      release/wdx/translitwdx/
 
+
+# kpart
+mkdir -p release/wlx/kpart
+mkdir -p wlx/kpart/build
+(cd wlx/kpart/build && cmake .. && make)
+install -m 644 wlx/kpart/build/kpart_host.wlx release/wlx/kpart/
+install -m 644 wlx/kpart/*.md release/wlx/kpart/
+install -m 644 wlx/kpart/*.png release/wlx/kpart/
+
 pushd release
 tar -czpf ../plugins-$(date +%y.%m.%d)-$ARCH.tar.gz *
 popd
