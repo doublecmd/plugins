@@ -66,6 +66,15 @@ install -m 644 wdx/mediainfo/luajit/*.lua      release/wdx/mediainfo/
 install -m 644 wdx/translitwdx/translitwdx.lua release/wdx/translitwdx/
 install -m 644 wdx/translitwdx/readme.txt      release/wdx/translitwdx/
 
+
+# mpv_wayland
+mkdir -p release/wlx/mpv_wayland
+mkdir -p wlx/mpv_wayland/build
+(cd wlx/mpv_wayland/build && cmake .. && make)
+install -m 644 wlx/mpv_wayland/build/mpv_wayland.wlx release/wlx/mpv_wayland/
+install -m 644 wlx/mpv_wayland/*.md release/wlx/mpv_wayland/
+install -m 644 wlx/mpv_wayland/*.png release/wlx/mpv_wayland/
+
 pushd release
 tar -czpf ../plugins-$(date +%y.%m.%d)-$ARCH.tar.gz *
 popd
