@@ -1,4 +1,4 @@
-#include "wlx_plugin.h"
+#include "../../../sdk/wlxplugin.h"
 #include "editor_widget.h"
 #include <QString>
 #include <cstring>
@@ -33,7 +33,7 @@ static void trackParentLifetime(QWidget *parent, void *key) {
     });
 }
 
-HWND ListLoad(HWND ParentWin, char* FileToLoad, int ShowFlags) {
+HWND DCPCALL ListLoad(HWND ParentWin, char* FileToLoad, int ShowFlags) {
     auto* parentWidget = static_cast<QWidget*>(ParentWin);
     const QString path = QString::fromUtf8(FileToLoad);
     logLoad(QStringLiteral("ListLoad parent=%1 path='%2' build='%3'")
@@ -70,9 +70,9 @@ HWND ListLoad(HWND ParentWin, char* FileToLoad, int ShowFlags) {
     return nullptr;
 }
 
-HWND ListLoadW(HWND ParentWin, char16_t* FileToLoad, int ShowFlags) {
+HWND DCPCALL ListLoadW(HWND ParentWin, WCHAR* FileToLoad, int ShowFlags) {
     auto* parentWidget = static_cast<QWidget*>(ParentWin);
-    const QString path = QString::fromUtf16(FileToLoad);
+    const QString path = QString::fromUtf16((const char16_t*)FileToLoad);
     logLoad(QStringLiteral("ListLoadW parent=%1 path='%2' build='%3'")
                 .arg(reinterpret_cast<qulonglong>(ParentWin), 0, 16)
                 .arg(path, QStringLiteral(__DATE__ " " __TIME__)));
@@ -105,7 +105,7 @@ HWND ListLoadW(HWND ParentWin, char16_t* FileToLoad, int ShowFlags) {
     return nullptr;
 }
 
-void ListCloseWindow(HWND ListWin) {
+void DCPCALL ListCloseWindow(HWND ListWin) {
     auto* editor = static_cast<EditorWidget*>(ListWin);
     if (editor) {
         logLoad(QStringLiteral("ListCloseWindow editor=%1").arg(reinterpret_cast<qulonglong>(ListWin), 0, 16));
@@ -116,13 +116,13 @@ void ListCloseWindow(HWND ListWin) {
     }
 }
 
-void ListGetDetectString(char* DetectString, int maxlen) {
+void DCPCALL ListGetDetectString(char* DetectString, int maxlen) {
     const char* detectStr = "EXT=\"TXT\" | EXT=\"PAS\" | EXT=\"C\" | EXT=\"CPP\" | EXT=\"H\" | EXT=\"PY\" | EXT=\"JS\" | EXT=\"HTML\" | EXT=\"CSS\" | EXT=\"JSON\" | EXT=\"XML\" | EXT=\"MD\" | EXT=\"SH\"";
     strncpy(DetectString, detectStr, maxlen - 1);
     DetectString[maxlen - 1] = '\0';
 }
 
-int ListSendCommand(HWND ListWin, int Command, int Parameter) {
+int DCPCALL ListSendCommand(HWND ListWin, int Command, int Parameter) {
     auto* editor = static_cast<EditorWidget*>(ListWin);
     if (!editor) return LISTPLUGIN_ERROR;
 
