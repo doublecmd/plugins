@@ -1,4 +1,4 @@
-#include "wlxplugin.h"
+#include "../../../sdk/wlxplugin.h"
 #include <QWidget>
 #include <QDebug>
 #include <QTimer>
