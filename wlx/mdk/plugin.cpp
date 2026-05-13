@@ -16,7 +16,7 @@
 #include <cstdio>
 #include <cstdint>
 
-#include "sdk/wlxplugin.h"
+#include "../../sdk/wlxplugin.h"
 
 /* Include official MDK SDK C API headers */
 #include <mdk/c/Player.h>
