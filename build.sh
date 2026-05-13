@@ -18,6 +18,7 @@ mkdir -p release/wdx/translitwdx
 mkdir -p release/wdx/similarity
 mkdir -p release/wdx/xpi_wdx
 mkdir -p release/wfx/gvfs
+mkdir -p release/wfx/rclone
 mkdir -p release/wlx/gstplayer
 mkdir -p release/wlx/fileinfo
 
@@ -52,6 +53,11 @@ install -m 644 wdx/xpi_wdx/xpi_wdx.wdx release/wdx/xpi_wdx/
 
 make -C wfx/gvfs/src clean all
 install -m 644 wfx/gvfs/gvfs.wfx release/wfx/gvfs/
+
+lazbuild --build-mode=Release wfx/rclone/src/rclone.lpi
+install -m 644 wfx/rclone/rclone.wfx     release/wfx/rclone/
+install -m 644 wfx/rclone/src/rclone.ico release/wfx/rclone/
+install -m 644 wfx/rclone/COPYING.txt    release/wfx/rclone/
 
 make -C wlx/gstplayer/src clean all
 install -m 644 wlx/gstplayer/gstplayer.wlx release/wlx/gstplayer/
