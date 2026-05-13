@@ -17,7 +17,7 @@ find_package(KF6KIO REQUIRED)
 find_package(KF6CoreAddons REQUIRED)
 
 include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}/sdk
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../sdk
 )
 
 add_library(kpart_host SHARED
