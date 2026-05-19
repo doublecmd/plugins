@@ -72,6 +72,13 @@ install -m 644 wdx/mediainfo/luajit/*.lua      release/wdx/mediainfo/
 install -m 644 wdx/translitwdx/translitwdx.lua release/wdx/translitwdx/
 install -m 644 wdx/translitwdx/readme.txt      release/wdx/translitwdx/
 
+# logview
+mkdir -p release/wlx/logview
+mkdir -p wlx/logview/build
+(cd wlx/logview/build && cmake .. && make)
+install -m 644 wlx/logview/build/logviewer_wlx.wlx release/wlx/logview/
+install -m 644 wlx/logview/*.md release/wlx/logview/
+install -m 644 wlx/logview/*.png release/wlx/logview/
 
 # mpv_wayland
 mkdir -p release/wlx/mpv_wayland
