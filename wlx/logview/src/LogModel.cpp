@@ -94,14 +94,44 @@ QVariant LogModel::data(const QModelIndex &index, int role) const {
     if (role == Qt::DisplayRole)
         return lineText(row);
 
-    // Highlight matched lines with a subtle background
-    if (role == Qt::BackgroundRole) {
-        if (row < (int)m_matches.size() && m_matches[row])
+    if (role == Qt::BackgroundRole || role == Qt::ForegroundRole) {
+        // Search match background takes priority
+        if (role == Qt::BackgroundRole && row < (int)m_matches.size() && m_matches[row]) {
             return QColor(60, 60, 0); // dark yellow
+        }
+
+        // Test highlight rules in order
+        if (m_mappedData && !m_rules.empty()) {
+            const uint64_t start = m_lineOffsets[row];
+            const uint64_t end   = m_lineOffsets[row + 1];
+            uint64_t len = end - start;
+            while (len > 0 && (m_mappedData[start + len - 1] == '\n' ||
+                               m_mappedData[start + len - 1] == '\r'))
+                --len;
+            re2::StringPiece linePiece(m_mappedData + start, len);
+
+            for (const auto &rule : m_rules) {
+                if (rule.compiledRegex && re2::RE2::PartialMatch(linePiece, *rule.compiledRegex)) {
+                    if (role == Qt::BackgroundRole) {
+                        return rule.backgroundColor;
+                    } else if (role == Qt::ForegroundRole) {
+                        return rule.foregroundColor;
+                    }
+                }
+            }
+        }
     }
 
     return {};
 }
+
+void LogModel::setHighlightRules(const std::vector<HighlightRule>& rules) {
+    m_rules = rules;
+    if (lineCount() > 0) {
+        emit dataChanged(index(0), index(lineCount() - 1), {Qt::BackgroundRole, Qt::ForegroundRole});
+    }
+}
+
 
 // ─── File loading ──────────────────────────────────────────────────────
 

@@ -1,0 +1,42 @@
+2026-05-26 14:15:00.000 [main] INFO  com.example.App - Starting Application...
+2026-05-26 14:15:00.012 [main] DEBUG com.example.App - Initializing dependency injection framework.
+2026-05-26 14:15:00.045 [main] TRACE com.example.App - Scanning package com.example.service
+2026-05-26 14:15:00.048 [main] TRACE com.example.App - Found class com.example.service.UserService
+2026-05-26 14:15:00.052 [main] TRACE com.example.App - Found class com.example.service.AuthService
+2026-05-26 14:15:00.101 [main] DEBUG com.example.App - Configuring database pool connections.
+2026-05-26 14:15:00.220 [main] INFO  com.example.db.DbPool - Database pool initialized. Max connections: 20
+2026-05-26 14:15:00.225 [main] WARN  com.example.db.DbPool - Connection timeout not set. Falling back to default: 30000ms.
+2026-05-26 14:15:00.312 [main] INFO  com.example.App - Web server started on port 8080.
+2026-05-26 14:15:05.110 [http-nio-8080-exec-1] DEBUG com.example.web.UserController - GET /api/users/active
+2026-05-26 14:15:05.112 [http-nio-8080-exec-1] TRACE com.example.service.UserService - Fetching active users from database Cache.
+2026-05-26 14:15:05.115 [http-nio-8080-exec-1] DEBUG com.example.service.UserService - Cache hit for active users. Returning 3 users.
+2026-05-26 14:15:10.420 [http-nio-8080-exec-2] DEBUG com.example.web.AuthController - POST /api/auth/login
+2026-05-26 14:15:10.421 [http-nio-8080-exec-2] TRACE com.example.service.AuthService - Authenticating user: admin
+2026-05-26 14:15:10.655 [http-nio-8080-exec-2] WARN  com.example.service.AuthService - User admin login failed: Invalid credentials.
+2026-05-26 14:15:10.658 [http-nio-8080-exec-2] INFO  com.example.web.AuthController - Authentication response: 401 Unauthorized
+2026-05-26 14:15:15.910 [scheduler-1] INFO  com.example.job.CleanupJob - Starting scheduled database cleanup job...
+2026-05-26 14:15:15.912 [scheduler-1] TRACE com.example.job.CleanupJob - Fetching expired sessions.
+2026-05-26 14:15:16.020 [scheduler-1] DEBUG com.example.job.CleanupJob - Found 14 expired sessions.
+2026-05-26 14:15:16.090 [scheduler-1] INFO  com.example.job.CleanupJob - Successfully deleted 14 expired sessions from DB.
+2026-05-26 14:15:20.100 [http-nio-8080-exec-3] DEBUG com.example.web.PaymentController - POST /api/payment/checkout
+2026-05-26 14:15:20.102 [http-nio-8080-exec-3] TRACE com.example.service.PaymentService - Processing transaction for token: tx_987234
+2026-05-26 14:15:20.500 [http-nio-8080-exec-3] ERROR com.example.service.PaymentService - Payment gateway timeout for token tx_987234.
+2026-05-26 14:15:20.502 [http-nio-8080-exec-3] WARN  com.example.service.PaymentService - Retrying transaction... Attempt 1 of 3
+2026-05-26 14:15:21.010 [http-nio-8080-exec-3] ERROR com.example.service.PaymentService - Payment gateway error on retry 1: Internal Gateway Error.
+2026-05-26 14:15:21.012 [http-nio-8080-exec-3] WARN  com.example.service.PaymentService - Retrying transaction... Attempt 2 of 3
+2026-05-26 14:15:22.250 [http-nio-8080-exec-3] ERROR com.example.service.PaymentService - Payment gateway error on retry 2: Service Unavailable.
+2026-05-26 14:15:22.252 [http-nio-8080-exec-3] WARN  com.example.service.PaymentService - Retrying transaction... Attempt 3 of 3
+2026-05-26 14:15:23.500 [http-nio-8080-exec-3] FATAL com.example.service.PaymentService - Checkout failed after 3 retries. Disabling payment module checkout endpoint!
+2026-05-26 14:15:23.504 [http-nio-8080-exec-3] ERROR com.example.web.PaymentController - Checkout process halted due to FATAL payment gateway error.
+2026-05-26 14:15:23.510 [main] INFO  com.example.App - Gracefully shutting down application due to critical failure...
+2026-05-26 14:15:23.512 [main] DEBUG com.example.db.DbPool - Closing database connections in pool.
+2026-05-26 14:15:23.550 [main] INFO  com.example.App - Database connections closed successfully.
+2026-05-26 14:15:23.552 [main] INFO  com.example.App - Application shut down complete.
+This line doesn't match any rule.
+This is another line that doesn't match any rule (no log levels here).
+Simple separator line: ==========================================
+Running system diagnostics...
+- CPU load: 12%
+- Memory usage: 1.2 GB / 8.0 GB
+- Disk space: 45 GB free
+All services terminated cleanly.

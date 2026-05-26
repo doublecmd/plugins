@@ -11,6 +11,12 @@ A high-performance, Wayland-compatible WLX (Lister) log viewer plugin for Double
 - **Timestamp Range Filtering**: Automatically detects and parses common timestamp formats (ISO 8601, nginx, syslog). Allows filtering log lines within a specific date/time range.
 - **Live Tailing (Follow Mode)**: Monitors the file for changes using `QFileSystemWatcher` (inotify-based) and automatically updates and scrolls to new entries.
 - **Advanced Filtering**: Implements `QSortFilterProxyModel` for combining regex matches and timestamp ranges efficiently.
+- **Regex-based Color Highlighting**: 
+  - Allows mapping regular expression patterns to custom foreground and background colors to visually distinguish log levels and components.
+  - Configurable settings modal with a priority-sorted data grid representing patterns directly in their chosen styles. Supports double-clicking a row to edit.
+  - Full support for multi-selection actions to delete, move up, or move down multiple rules at once.
+  - Pre-packaged **Add Default Rules** button to instantly insert standard diagnostics highlights (`TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, `FATAL`) relative to your current selection.
+  - Persists configurations across sessions by saving the rule list to Double Commander's default INI file in the `[HighlightRules]` section.
 - **Native Interactions**: Supports standard file manager interactions, including multi-row selection (Ctrl+click, Shift+click) and copying (Ctrl+C, Right-click context menu).
 - **Wayland Focus Isolation**: Implements a robust 4-layer focus defense architecture to resolve Wayland focus-hijacking bugs typical when embedding Qt components into Lazarus applications:
   - **Layer 0**: Deferred `show()` execution to prevent the plugin from trapping the host's `MouseRelease` event (fixes the "phantom-drag" issue).

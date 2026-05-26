@@ -14,7 +14,7 @@
 #include <QAction>
 #include <QPointer>
 
-class LogModel;
+#include "LogModel.h"
 
 // Proxy that filters rows by regex match and/or timestamp range
 class LogFilterProxy : public QSortFilterProxyModel {
@@ -59,6 +59,9 @@ private slots:
     void onTailUpdated();
     void onTimeRangeChanged();
     void copySelectedLines();
+    void onSettingsClicked();
+    std::vector<HighlightRule> loadHighlightRules();
+    void saveHighlightRules(const std::vector<HighlightRule>& rules);
 
 private:
     void scrollToSourceRow(int sourceRow);
@@ -71,13 +74,13 @@ private:
     QLineEdit *searchEdit;
     QPushButton *btnSearchStart;
     QPushButton *btnSearchStop;
+    QPushButton *btnSettings;
     QDateTimeEdit *timeStart;
     QDateTimeEdit *timeEnd;
     QCheckBox *chkFollow;
     QCheckBox *chkFilterMode;
     QProgressBar *progressBar;
     QLabel *statusLabel;
-
     LogModel *model;
     LogFilterProxy *filterProxy;
     QString currentFile;
