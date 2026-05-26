@@ -12,7 +12,7 @@
 #include <QDialog>
 #include <QTableWidget>
 #include <QHeaderView>
-#include <QColorDialog>
+#include <QColorDial
 #include <QMessageBox>
 #include <QLabel>
 #include <QDir>
@@ -545,7 +545,7 @@ LogViewerWidget::LogViewerWidget(QWidget *parent)
 }
 
 LogViewerWidget::~LogViewerWidget() {
-    qDebug() << "LogViewerWidget destroyed";
+    qDebug() "LogViewerWidget destroyed";
 }
 
 // ─── Focus Layer 2: installFocusGuard ──────────────────────────────────

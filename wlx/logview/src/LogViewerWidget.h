@@ -81,8 +81,6 @@ private:
     QCheckBox *chkFilterMode;
     QProgressBar *progressBar;
     QLabel *statusLabel;
-
-
     LogModel *model;
     LogFilterProxy *filterProxy;
     QString currentFile;

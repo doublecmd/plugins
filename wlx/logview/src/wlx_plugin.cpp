@@ -3,7 +3,6 @@
 #include <QDebug>
 #include <QTimer>
 #include <exception>
-
 #include <QString>
 #include "LogViewerWidget.h"
 
