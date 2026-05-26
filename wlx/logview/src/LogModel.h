@@ -4,10 +4,23 @@
 #include <QFileSystemWatcher>
 #include <QDateTime>
 #include <QString>
+#include <QColor>
 #include <vector>
 #include <cstdint>
 #include <thread>
 #include <atomic>
+#include <memory>
+
+namespace re2 {
+    class RE2;
+}
+
+struct HighlightRule {
+    QString pattern;
+    QColor foregroundColor;
+    QColor backgroundColor;
+    std::shared_ptr<re2::RE2> compiledRegex;
+};
 
 class LogModel : public QAbstractListModel {
     Q_OBJECT
@@ -17,6 +30,7 @@ public:
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
+
 
     void loadFile(const QString& filePath);
 
@@ -37,6 +51,10 @@ public:
 
     // Follow / tail
     void setFollowEnabled(bool enabled);
+
+    // Highlighting rules
+    void setHighlightRules(const std::vector<HighlightRule>& rules);
+    std::vector<HighlightRule> highlightRules() const { return m_rules; }
 
     // Timestamp parsing for external use (filter proxy)
     static QDateTime parseTimestampFromLine(const QString &line);
@@ -76,4 +94,8 @@ private:
     // File watching
     QFileSystemWatcher *m_watcher = nullptr;
     bool m_followEnabled = false;
+
+    // Highlight rules
+    std::vector<HighlightRule> m_rules;
 };
+

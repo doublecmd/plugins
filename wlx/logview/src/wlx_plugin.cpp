@@ -4,12 +4,22 @@
 #include <QTimer>
 #include <exception>
 
+#include <QString>
 #include "LogViewerWidget.h"
+
+QString g_iniPath;
 
 // Define a visibility macro for exported functions
 #define EXPORT __attribute__((visibility("default")))
 
 extern "C" {
+
+EXPORT void DCPCALL ListSetDefaultParams(ListDefaultParamStruct* dps) {
+    if (dps) {
+        g_iniPath = QString::fromUtf8(dps->DefaultIniName);
+    }
+}
+
 
 EXPORT HWND DCPCALL ListLoad(HWND ParentWin, char* FileToLoad, int ShowFlags) {
     try {
