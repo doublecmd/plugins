@@ -86,6 +86,7 @@ EditorWidget::EditorWidget(QWidget *parent)
     
     // Create UI Elements
     m_menuBar = new QMenuBar(this);
+    m_menuBar->setFocusPolicy(Qt::NoFocus);
     // Unmissable marker so we can confirm which binary DC is running.
     m_menuBar->setNativeMenuBar(false);
     m_toolbar = new QToolBar(this);
@@ -1097,6 +1098,7 @@ void EditorWidget::setupMenu() {
 void EditorWidget::setupToolBar() {
     m_toolbar->setMovable(false);
     m_toolbar->setIconSize(QSize(20, 20));
+    m_toolbar->setFocusPolicy(Qt::NoFocus);
 
     QAction *saveAction = new QAction(QIcon::fromTheme("document-save"), "Save", this);
     connect(saveAction, &QAction::triggered, this, &EditorWidget::saveDocument);
@@ -1142,10 +1144,18 @@ void EditorWidget::setupToolBar() {
         m_actionWordWrap->setIcon(QIcon::fromTheme("format-text-direction-ltr"));
         m_toolbar->addAction(m_actionWordWrap);
     }
+
+    for (QAction *action : m_toolbar->actions()) {
+        QWidget *widget = m_toolbar->widgetForAction(action);
+        if (widget) {
+            widget->setFocusPolicy(Qt::NoFocus);
+        }
+    }
 }
 
 void EditorWidget::setupStatusBar() {
     m_statusBar = new QWidget(this);
+    m_statusBar->setFocusPolicy(Qt::NoFocus);
     m_statusLayout = new QHBoxLayout(m_statusBar);
     m_statusLayout->setContentsMargins(6, 2, 6, 2);
     
