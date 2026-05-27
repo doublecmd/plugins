@@ -61,6 +61,7 @@ private:
 
     int m_zoomLevel;
     bool m_isRestoringFocus;
+    bool m_userExpectsWritable;
 
     KTextEditor::Cursor m_savedCursor;
     KTextEditor::Range m_savedSelection;

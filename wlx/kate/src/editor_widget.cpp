@@ -64,7 +64,8 @@ EditorWidget::EditorWidget(QWidget *parent)
       m_diskChangeReload(nullptr),
       m_diskChangeIgnore(nullptr),
       m_isActive(false),
-      m_isRestoringFocus(false)
+      m_isRestoringFocus(false),
+      m_userExpectsWritable(false)
 {
     m_layout = new QVBoxLayout(this);
     m_layout->setContentsMargins(0, 0, 0, 0);
@@ -441,8 +442,14 @@ bool EditorWidget::eventFilter(QObject *obj, QEvent *event) {
                         if (a->isEnabled()) { a->trigger(); triggered = true; }
                     }
                 } else if (key == Qt::Key_Z && (mods & Qt::ControlModifier)) {
-                    if (QAction *a = kteAction(m_view, "edit_undo")) {
-                        if (a->isEnabled()) { a->trigger(); triggered = true; }
+                    if (mods & Qt::ShiftModifier) {
+                        if (QAction *a = kteAction(m_view, "edit_redo")) {
+                            if (a->isEnabled()) { a->trigger(); triggered = true; }
+                        }
+                    } else {
+                        if (QAction *a = kteAction(m_view, "edit_undo")) {
+                            if (a->isEnabled()) { a->trigger(); triggered = true; }
+                        }
                     }
                 } else if (key == Qt::Key_Y && (mods & Qt::ControlModifier)) {
                     if (QAction *a = kteAction(m_view, "edit_redo")) {
@@ -456,6 +463,7 @@ bool EditorWidget::eventFilter(QObject *obj, QEvent *event) {
                     if (m_doc) {
                         bool nowReadWrite = !m_doc->isReadWrite();
                         m_doc->setReadWrite(nowReadWrite);
+                        m_userExpectsWritable = nowReadWrite;
                         // Sync the toolbar/menu action if it exists
                         if (m_actionReadOnly && m_actionReadOnly->isCheckable()) {
                             m_actionReadOnly->blockSignals(true);
@@ -957,6 +965,12 @@ bool EditorWidget::loadFile(const QString &filePath) {
     
     // Read-only by default — user can toggle via toolbar/menu/Ctrl+Shift+B lock
     m_doc->setReadWrite(false);
+    m_userExpectsWritable = false;
+    if (m_actionReadOnly && m_actionReadOnly->isCheckable()) {
+        m_actionReadOnly->blockSignals(true);
+        m_actionReadOnly->setChecked(true);
+        m_actionReadOnly->blockSignals(false);
+    }
     m_view->setContextMenu(m_view->defaultContextMenu());
     m_view->setCursorPosition(KTextEditor::Cursor(0, 0));
     m_view->setStatusBarEnabled(false);
@@ -1079,10 +1093,16 @@ void EditorWidget::setupMenu() {
     if (QAction* a = kteAction(m_view, "tools_toggle_write_lock")) {
         m_actionReadOnly = a;
         viewMenu->addAction(a);
+        connect(a, &QAction::triggered, this, [this](bool checked) {
+            m_userExpectsWritable = !checked;
+        });
     } else {
         m_actionReadOnly = new QAction("Read-Only Mode", this);
         m_actionReadOnly->setCheckable(true);
-        connect(m_actionReadOnly, &QAction::toggled, this, [this](bool checked){ if (m_doc) m_doc->setReadWrite(!checked); });
+        connect(m_actionReadOnly, &QAction::triggered, this, [this](bool checked){
+            if (m_doc) m_doc->setReadWrite(!checked);
+            m_userExpectsWritable = !checked;
+        });
         viewMenu->addAction(m_actionReadOnly);
     }
     
@@ -1187,6 +1207,19 @@ void EditorWidget::onCursorPositionChanged() {
 }
 
 void EditorWidget::onDocumentModeChanged() {
+    if (m_doc) {
+        bool docWritable = m_doc->isReadWrite();
+        if (!docWritable && m_userExpectsWritable) {
+            m_doc->blockSignals(true);
+            m_doc->setReadWrite(true);
+            m_doc->blockSignals(false);
+        }
+        if (m_actionReadOnly && m_actionReadOnly->isCheckable()) {
+            m_actionReadOnly->blockSignals(true);
+            m_actionReadOnly->setChecked(!m_doc->isReadWrite());
+            m_actionReadOnly->blockSignals(false);
+        }
+    }
     updateStatusBar();
 }
 
