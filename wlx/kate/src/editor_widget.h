@@ -61,7 +61,6 @@ private:
 
     int m_zoomLevel;
     bool m_isRestoringFocus;
-    bool m_userExpectsWritable;
 
     KTextEditor::Cursor m_savedCursor;
     KTextEditor::Range m_savedSelection;
@@ -89,6 +88,7 @@ private:
     KTextEditor::Cursor findWordStart(const KTextEditor::Cursor &cursor) const;
     KTextEditor::Cursor findWordEnd(const KTextEditor::Cursor &cursor) const;
     void saveDocument();
+    void toggleReadOnly();
 
     // Focus handling
     bool m_isActive;

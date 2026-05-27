@@ -64,8 +64,7 @@ EditorWidget::EditorWidget(QWidget *parent)
       m_diskChangeReload(nullptr),
       m_diskChangeIgnore(nullptr),
       m_isActive(false),
-      m_isRestoringFocus(false),
-      m_userExpectsWritable(false)
+      m_isRestoringFocus(false)
 {
     m_layout = new QVBoxLayout(this);
     m_layout->setContentsMargins(0, 0, 0, 0);
@@ -356,6 +355,7 @@ bool EditorWidget::eventFilter(QObject *obj, QEvent *event) {
                 (key == Qt::Key_Z && (mods & Qt::ControlModifier)) ||
                 (key == Qt::Key_Y && (mods & Qt::ControlModifier)) ||
                 (key == Qt::Key_W && (mods & Qt::ControlModifier)) ||
+                (key == Qt::Key_R && (mods & Qt::AltModifier) && (mods & Qt::ShiftModifier)) ||
                 (key == Qt::Key_B && (mods & Qt::ControlModifier) && (mods & Qt::ShiftModifier)) ||
                 key == Qt::Key_Left || key == Qt::Key_Right || key == Qt::Key_Up || key == Qt::Key_Down ||
                 key == Qt::Key_Home || key == Qt::Key_End || key == Qt::Key_PageUp || key == Qt::Key_PageDown) {
@@ -459,19 +459,10 @@ bool EditorWidget::eventFilter(QObject *obj, QEvent *event) {
                     saveDocument();
                     triggered = true;
                 } else if (key == Qt::Key_W && (mods & Qt::ControlModifier)) {
-                    // Ctrl+W: toggle read-only mode
-                    if (m_doc) {
-                        bool nowReadWrite = !m_doc->isReadWrite();
-                        m_doc->setReadWrite(nowReadWrite);
-                        m_userExpectsWritable = nowReadWrite;
-                        // Sync the toolbar/menu action if it exists
-                        if (m_actionReadOnly && m_actionReadOnly->isCheckable()) {
-                            m_actionReadOnly->blockSignals(true);
-                            m_actionReadOnly->setChecked(!nowReadWrite);
-                            m_actionReadOnly->blockSignals(false);
-                        }
-                        updateStatusBar();
-                    }
+                    toggleReadOnly();
+                    triggered = true;
+                } else if (key == Qt::Key_R && (mods & Qt::AltModifier) && (mods & Qt::ShiftModifier)) {
+                    toggleReadOnly();
                     triggered = true;
                 } else if (key == Qt::Key_B && (mods & Qt::ControlModifier) && (mods & Qt::ShiftModifier)) {
                     if (QAction *a = kteAction(m_view, "set_verticalSelect")) {
@@ -965,12 +956,6 @@ bool EditorWidget::loadFile(const QString &filePath) {
     
     // Read-only by default — user can toggle via toolbar/menu/Ctrl+Shift+B lock
     m_doc->setReadWrite(false);
-    m_userExpectsWritable = false;
-    if (m_actionReadOnly && m_actionReadOnly->isCheckable()) {
-        m_actionReadOnly->blockSignals(true);
-        m_actionReadOnly->setChecked(true);
-        m_actionReadOnly->blockSignals(false);
-    }
     m_view->setContextMenu(m_view->defaultContextMenu());
     m_view->setCursorPosition(KTextEditor::Cursor(0, 0));
     m_view->setStatusBarEnabled(false);
@@ -1092,16 +1077,14 @@ void EditorWidget::setupMenu() {
     // Native read-only toggle
     if (QAction* a = kteAction(m_view, "tools_toggle_write_lock")) {
         m_actionReadOnly = a;
+        m_actionReadOnly->setShortcuts({QKeySequence("Ctrl+W"), QKeySequence("Alt+Shift+R")});
         viewMenu->addAction(a);
-        connect(a, &QAction::triggered, this, [this](bool checked) {
-            m_userExpectsWritable = !checked;
-        });
     } else {
         m_actionReadOnly = new QAction("Read-Only Mode", this);
         m_actionReadOnly->setCheckable(true);
+        m_actionReadOnly->setShortcuts({QKeySequence("Ctrl+W"), QKeySequence("Alt+Shift+R")});
         connect(m_actionReadOnly, &QAction::triggered, this, [this](bool checked){
             if (m_doc) m_doc->setReadWrite(!checked);
-            m_userExpectsWritable = !checked;
         });
         viewMenu->addAction(m_actionReadOnly);
     }
@@ -1207,19 +1190,6 @@ void EditorWidget::onCursorPositionChanged() {
 }
 
 void EditorWidget::onDocumentModeChanged() {
-    if (m_doc) {
-        bool docWritable = m_doc->isReadWrite();
-        if (!docWritable && m_userExpectsWritable) {
-            m_doc->blockSignals(true);
-            m_doc->setReadWrite(true);
-            m_doc->blockSignals(false);
-        }
-        if (m_actionReadOnly && m_actionReadOnly->isCheckable()) {
-            m_actionReadOnly->blockSignals(true);
-            m_actionReadOnly->setChecked(!m_doc->isReadWrite());
-            m_actionReadOnly->blockSignals(false);
-        }
-    }
     updateStatusBar();
 }
 
@@ -1264,6 +1234,19 @@ void EditorWidget::trimTrailingSpaces() {
         if (newLen < line.length()) {
             m_doc->replaceText(KTextEditor::Range(i, newLen, i, line.length()), "");
         }
+    }
+}
+
+void EditorWidget::toggleReadOnly() {
+    if (m_doc) {
+        bool nowReadWrite = !m_doc->isReadWrite();
+        m_doc->setReadWrite(nowReadWrite);
+        if (m_actionReadOnly && m_actionReadOnly->isCheckable()) {
+            m_actionReadOnly->blockSignals(true);
+            m_actionReadOnly->setChecked(!nowReadWrite);
+            m_actionReadOnly->blockSignals(false);
+        }
+        updateStatusBar();
     }
 }
 
