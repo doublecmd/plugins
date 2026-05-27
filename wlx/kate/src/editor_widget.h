@@ -89,6 +89,7 @@ private:
     KTextEditor::Cursor findWordEnd(const KTextEditor::Cursor &cursor) const;
     void saveDocument();
     void restoreEditorFocus();
+    void handleFindReplaceOrGoto(const QString &actionName, bool hadSelection, const QString &selectionText = QString());
 
     // Focus handling
     bool m_isActive;

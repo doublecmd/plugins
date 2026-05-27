@@ -7,6 +7,8 @@
 #include <QUrl>
 #include <QActionGroup>
 #include <QApplication>
+#include <QSpinBox>
+#include <QLineEdit>
 #include <QFont>
 #include <QStringList>
 #include <QMouseEvent>
@@ -921,6 +923,58 @@ void EditorWidget::restoreEditorFocus() {
     }
 }
 
+void EditorWidget::handleFindReplaceOrGoto(const QString &actionName, bool hadSelection, const QString &selectionText) {
+    if (actionName == "go_goto_line") {
+        QTimer::singleShot(50, this, [this]() {
+            QWidget *activeModal = QApplication::activeModalWidget();
+            if (activeModal) {
+                QLineEdit *le = activeModal->findChild<QLineEdit*>();
+                if (le) {
+                    le->setFocus();
+                    le->selectAll();
+                    return;
+                }
+                QSpinBox *sb = activeModal->findChild<QSpinBox*>();
+                if (sb) {
+                    sb->setFocus();
+                    sb->selectAll();
+                    return;
+                }
+                activeModal->setFocus();
+            }
+        });
+    } else if (actionName == "edit_find" || actionName == "edit_replace") {
+        QTimer::singleShot(50, this, [this, actionName, hadSelection, selectionText]() {
+            if (!m_view) return;
+            QList<QLineEdit*> lineEdits = m_view->findChildren<QLineEdit*>();
+            QList<QLineEdit*> visibleLineEdits;
+            for (QLineEdit *le : lineEdits) {
+                if (le->isVisible()) {
+                    visibleLineEdits.append(le);
+                }
+            }
+            if (visibleLineEdits.isEmpty()) return;
+
+            if (hadSelection && !selectionText.isEmpty()) {
+                visibleLineEdits.first()->setText(selectionText);
+            }
+
+            if (actionName == "edit_find") {
+                visibleLineEdits.first()->setFocus();
+                visibleLineEdits.first()->selectAll();
+            } else if (actionName == "edit_replace") {
+                if (hadSelection && visibleLineEdits.size() >= 2) {
+                    visibleLineEdits.at(1)->setFocus();
+                    visibleLineEdits.at(1)->selectAll();
+                } else {
+                    visibleLineEdits.first()->setFocus();
+                    visibleLineEdits.first()->selectAll();
+                }
+            }
+        });
+    }
+}
+
 void EditorWidget::focusOutEvent(QFocusEvent *event) {
     if (m_isActive) {
         const auto reason = event->reason();
@@ -1103,15 +1157,47 @@ void EditorWidget::setupMenu() {
     if (QAction* a = kteAction(m_view, "tools_highlighting")) viewMenu->addAction(a);
     if (QAction* a = kteAction(m_view, "tools_mode")) viewMenu->addAction(a);
 
+    QAction *findAct = kteAction(m_view, "edit_find");
+    QAction *replaceAct = kteAction(m_view, "edit_replace");
+    QAction *gotoAct = kteAction(m_view, "go_goto_line");
+
+    if (findAct) {
+        findAct->setObjectName("edit_find");
+        connect(findAct, &QAction::triggered, this, [this]() {
+            QString selText = (m_view && m_view->selection()) ? m_view->selectionText() : QString();
+            handleFindReplaceOrGoto("edit_find", !selText.isEmpty(), selText);
+        });
+    }
+    if (replaceAct) {
+        replaceAct->setObjectName("edit_replace");
+        connect(replaceAct, &QAction::triggered, this, [this]() {
+            QString selText = (m_view && m_view->selection()) ? m_view->selectionText() : QString();
+            handleFindReplaceOrGoto("edit_replace", !selText.isEmpty(), selText);
+        });
+    }
+    if (gotoAct) {
+        gotoAct->setObjectName("go_goto_line");
+        connect(gotoAct, &QAction::triggered, this, [this]() {
+            handleFindReplaceOrGoto("go_goto_line", false, QString());
+        });
+    }
+
     // Set up focus restoration for all menu actions recursively
-    auto setupFocusRestoration = [this](auto &self, QMenu *menu) -> void {
-        connect(menu, &QMenu::aboutToHide, this, [this]() {
+    auto setupFocusRestoration = [this, findAct, replaceAct, gotoAct](auto &self, QMenu *menu) -> void {
+        connect(menu, &QMenu::aboutToHide, this, [this, findAct, replaceAct, gotoAct, menu]() {
+            QAction *activeAct = menu->activeAction();
+            if (activeAct && (activeAct == findAct || activeAct == replaceAct || activeAct == gotoAct)) {
+                return;
+            }
             QTimer::singleShot(0, this, &EditorWidget::restoreEditorFocus);
         });
         for (QAction *action : menu->actions()) {
             if (action->menu()) {
                 self(self, action->menu());
             } else {
+                if (action == findAct || action == replaceAct || action == gotoAct) {
+                    continue;
+                }
                 connect(action, &QAction::triggered, this, &EditorWidget::restoreEditorFocus);
             }
         }
@@ -1178,6 +1264,9 @@ void EditorWidget::setupToolBar() {
         QWidget *widget = m_toolbar->widgetForAction(action);
         if (widget) {
             widget->setFocusPolicy(Qt::NoFocus);
+        }
+        if (action == findAction || action == replaceAction) {
+            continue;
         }
         connect(action, &QAction::triggered, this, &EditorWidget::restoreEditorFocus);
     }
