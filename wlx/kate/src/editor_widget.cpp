@@ -22,6 +22,7 @@
 #include <QDateTime>
 #include <QFile>
 #include <QDir>
+#include <QSet>
 #include <algorithm>
 
 // Helper: KTextEditor actions live in two places:
@@ -1033,12 +1034,20 @@ void EditorWidget::setupMenu() {
     
     // Tools
     QMenu *toolsMenu = m_menuBar->addMenu("&Tools");
-    toolsMenu->addAction("Convert to UPPERCASE", this, &EditorWidget::convertToUpper);
-    toolsMenu->addAction("Convert to lowercase", this, &EditorWidget::convertToLower);
-    toolsMenu->addAction("Convert to Title Case", this, &EditorWidget::convertToTitleCase);
-    toolsMenu->addAction("Convert to Proper case", this, &EditorWidget::convertToProperCase);
-    toolsMenu->addAction("Convert to camelCase", this, &EditorWidget::convertToCamelCase);
-    toolsMenu->addAction("Convert to snail_case", this, &EditorWidget::convertToSnailCase);
+    QMenu *capitalizationMenu = toolsMenu->addMenu("Capitalization");
+    capitalizationMenu->addAction("UPPERCASE", this, &EditorWidget::convertToUpper);
+    capitalizationMenu->addAction("lowercase", this, &EditorWidget::convertToLower);
+    capitalizationMenu->addAction("Title Case", this, &EditorWidget::convertToTitleCase);
+    capitalizationMenu->addAction("Proper case", this, &EditorWidget::convertToProperCase);
+    capitalizationMenu->addAction("Sentence case", this, &EditorWidget::convertToSentenceCase);
+    capitalizationMenu->addAction("camelCase", this, &EditorWidget::convertToCamelCase);
+    capitalizationMenu->addAction("PascalCase", this, &EditorWidget::convertToPascalCase);
+    capitalizationMenu->addAction("snake_case", this, &EditorWidget::convertToSnakeCase);
+    capitalizationMenu->addAction("SCREAMING_SNAKE_CASE", this, &EditorWidget::convertToScreamingSnakeCase);
+    capitalizationMenu->addAction("kebab-case", this, &EditorWidget::convertToKebabCase);
+    capitalizationMenu->addAction("SCREAMING-KEBAB-CASE", this, &EditorWidget::convertToScreamingKebabCase);
+    capitalizationMenu->addAction("dot.case", this, &EditorWidget::convertToDotCase);
+    capitalizationMenu->addAction("path/case", this, &EditorWidget::convertToPathCase);
     toolsMenu->addSeparator();
     
     QMenu* eolMenu = toolsMenu->addMenu("Convert EOL");
@@ -1269,21 +1278,84 @@ void EditorWidget::zoomReset() {
     updateStatusBar();
 }
 
+void EditorWidget::replaceSelectionPreservingRange(const QString &newText) {
+    if (!m_view || !m_view->selection()) return;
+    KTextEditor::Range oldRange = m_view->selectionRange();
+    KTextEditor::Cursor start = oldRange.start();
+    
+    m_doc->replaceText(oldRange, newText);
+    
+    QStringList lines = newText.split('\n');
+    KTextEditor::Cursor end;
+    if (lines.size() == 1) {
+        end = KTextEditor::Cursor(start.line(), start.column() + newText.length());
+    } else {
+        end = KTextEditor::Cursor(start.line() + lines.size() - 1, lines.last().length());
+    }
+    m_view->setSelection(KTextEditor::Range(start, end));
+}
+
 void EditorWidget::convertToTitleCase() {
     if (!m_view || !m_view->selection()) return;
     QString text = m_view->selectionText();
     QString result;
-    bool newWord = true;
-    for (int i = 0; i < text.length(); ++i) {
-        if (!text[i].isLetter()) {
-            result += text[i];
-            newWord = true;
+    
+    int i = 0;
+    int len = text.length();
+    
+    struct WordToken {
+        int start;
+        int length;
+        bool isWord;
+    };
+    QList<WordToken> tokens;
+    
+    while (i < len) {
+        if (text[i].isLetter()) {
+            int start = i;
+            while (i < len && text[i].isLetter()) {
+                i++;
+            }
+            tokens.append({start, i - start, true});
         } else {
-            if (newWord) { result += text[i].toUpper(); newWord = false; }
-            else { result += text[i].toLower(); }
+            int start = i;
+            while (i < len && !text[i].isLetter()) {
+                i++;
+            }
+            tokens.append({start, i - start, false});
         }
     }
-    m_doc->replaceText(m_view->selectionRange(), result);
+    
+    static const QSet<QString> minorWords = {
+        "a", "an", "the",
+        "and", "but", "for", "or", "nor",
+        "at", "by", "to", "of", "in", "with", "on", "from", "as"
+    };
+    
+    int firstWordIdx = -1;
+    int lastWordIdx = -1;
+    for (int j = 0; j < tokens.size(); ++j) {
+        if (tokens[j].isWord) {
+            if (firstWordIdx == -1) firstWordIdx = j;
+            lastWordIdx = j;
+        }
+    }
+    
+    for (int j = 0; j < tokens.size(); ++j) {
+        QString part = text.mid(tokens[j].start, tokens[j].length);
+        if (tokens[j].isWord) {
+            QString lowerPart = part.toLower();
+            if (j == firstWordIdx || j == lastWordIdx || !minorWords.contains(lowerPart)) {
+                result += lowerPart[0].toUpper() + lowerPart.mid(1);
+            } else {
+                result += lowerPart;
+            }
+        } else {
+            result += part;
+        }
+    }
+    
+    replaceSelectionPreservingRange(result);
 }
 
 void EditorWidget::convertToProperCase() {
@@ -1297,10 +1369,10 @@ void EditorWidget::convertToProperCase() {
             newWord = true;
         } else {
             if (newWord) { result += text[i].toUpper(); newWord = false; }
-            else { result += text[i]; } // Preserve original
+            else { result += text[i].toLower(); }
         }
     }
-    m_doc->replaceText(m_view->selectionRange(), result);
+    replaceSelectionPreservingRange(result);
 }
 
 void EditorWidget::convertToCamelCase() {
@@ -1324,10 +1396,34 @@ void EditorWidget::convertToCamelCase() {
             }
         }
     }
-    m_doc->replaceText(m_view->selectionRange(), result);
+    replaceSelectionPreservingRange(result);
 }
 
-void EditorWidget::convertToSnailCase() {
+void EditorWidget::convertToPascalCase() {
+    if (!m_view || !m_view->selection()) return;
+    QString text = m_view->selectionText();
+    QString result;
+    bool capitalizeNext = false;
+    bool firstChar = true;
+    for (int i = 0; i < text.length(); ++i) {
+        if (!text[i].isLetterOrNumber()) {
+            capitalizeNext = true;
+        } else {
+            if (firstChar) {
+                result += text[i].toUpper();
+                firstChar = false;
+            } else if (capitalizeNext) {
+                result += text[i].toUpper();
+                capitalizeNext = false;
+            } else {
+                result += text[i].toLower();
+            }
+        }
+    }
+    replaceSelectionPreservingRange(result);
+}
+
+void EditorWidget::convertToSnakeCase() {
     if (!m_view || !m_view->selection()) return;
     QString text = m_view->selectionText();
     QString result;
@@ -1341,7 +1437,115 @@ void EditorWidget::convertToSnailCase() {
             result += text[i].toLower();
         }
     }
-    m_doc->replaceText(m_view->selectionRange(), result);
+    replaceSelectionPreservingRange(result);
+}
+
+void EditorWidget::convertToScreamingSnakeCase() {
+    if (!m_view || !m_view->selection()) return;
+    QString text = m_view->selectionText();
+    QString result;
+    for (int i = 0; i < text.length(); ++i) {
+        if (text[i].isUpper() && i > 0 && text[i-1].isLower()) {
+            result += '_';
+            result += text[i].toUpper();
+        } else if (!text[i].isLetterOrNumber()) {
+            result += '_';
+        } else {
+            result += text[i].toUpper();
+        }
+    }
+    replaceSelectionPreservingRange(result);
+}
+
+void EditorWidget::convertToKebabCase() {
+    if (!m_view || !m_view->selection()) return;
+    QString text = m_view->selectionText();
+    QString result;
+    for (int i = 0; i < text.length(); ++i) {
+        if (text[i].isUpper() && i > 0 && text[i-1].isLower()) {
+            result += '-';
+            result += text[i].toLower();
+        } else if (!text[i].isLetterOrNumber()) {
+            result += '-';
+        } else {
+            result += text[i].toLower();
+        }
+    }
+    replaceSelectionPreservingRange(result);
+}
+
+void EditorWidget::convertToSentenceCase() {
+    if (!m_view || !m_view->selection()) return;
+    QString text = m_view->selectionText();
+    QString result;
+    bool capitalizeNext = true;
+    for (int i = 0; i < text.length(); ++i) {
+        if (text[i] == '.' || text[i] == '!' || text[i] == '?') {
+            result += text[i];
+            capitalizeNext = true;
+        } else if (text[i].isLetterOrNumber()) {
+            if (capitalizeNext && text[i].isLetter()) {
+                result += text[i].toUpper();
+                capitalizeNext = false;
+            } else {
+                result += text[i].toLower();
+            }
+        } else {
+            result += text[i];
+        }
+    }
+    replaceSelectionPreservingRange(result);
+}
+
+void EditorWidget::convertToScreamingKebabCase() {
+    if (!m_view || !m_view->selection()) return;
+    QString text = m_view->selectionText();
+    QString result;
+    for (int i = 0; i < text.length(); ++i) {
+        if (text[i].isUpper() && i > 0 && text[i-1].isLower()) {
+            result += '-';
+            result += text[i].toUpper();
+        } else if (!text[i].isLetterOrNumber()) {
+            result += '-';
+        } else {
+            result += text[i].toUpper();
+        }
+    }
+    replaceSelectionPreservingRange(result);
+}
+
+void EditorWidget::convertToDotCase() {
+    if (!m_view || !m_view->selection()) return;
+    QString text = m_view->selectionText();
+    QString result;
+    for (int i = 0; i < text.length(); ++i) {
+        if (text[i].isUpper() && i > 0 && text[i-1].isLower()) {
+            result += '.';
+            result += text[i].toLower();
+        } else if (!text[i].isLetterOrNumber()) {
+            result += '.';
+        } else {
+            result += text[i].toLower();
+        }
+    }
+    replaceSelectionPreservingRange(result);
+}
+
+void EditorWidget::convertToPathCase() {
+    if (!m_view || !m_view->selection()) return;
+    QString text = m_view->selectionText();
+    QString result;
+    for (int i = 0; i < text.length(); ++i) {
+        if (text[i].isUpper() && i > 0 && text[i-1].isLower()) {
+            result += '/';
+            result += text[i].toLower();
+        } else if (!text[i].isLetterOrNumber()) {
+            result += '/';
+        } else {
+            result += text[i].toLower();
+        }
+    }
+    replaceSelectionPreservingRange(result);
 }
 
 void EditorWidget::convertEolToWin() {

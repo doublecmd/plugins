@@ -88,6 +88,7 @@ private:
     KTextEditor::Cursor findWordStart(const KTextEditor::Cursor &cursor) const;
     KTextEditor::Cursor findWordEnd(const KTextEditor::Cursor &cursor) const;
     void saveDocument();
+    void replaceSelectionPreservingRange(const QString &newText);
 
     // Focus handling
     bool m_isActive;
@@ -102,7 +103,14 @@ private slots:
     void convertToTitleCase();
     void convertToProperCase();
     void convertToCamelCase();
-    void convertToSnailCase();
+    void convertToPascalCase();
+    void convertToSnakeCase();
+    void convertToScreamingSnakeCase();
+    void convertToKebabCase();
+    void convertToSentenceCase();
+    void convertToScreamingKebabCase();
+    void convertToDotCase();
+    void convertToPathCase();
     
     void convertEolToWin();
     void convertEolToLinux();
