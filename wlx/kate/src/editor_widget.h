@@ -88,6 +88,7 @@ private:
     KTextEditor::Cursor findWordStart(const KTextEditor::Cursor &cursor) const;
     KTextEditor::Cursor findWordEnd(const KTextEditor::Cursor &cursor) const;
     void saveDocument();
+    void restoreEditorFocus();
 
     // Focus handling
     bool m_isActive;

@@ -22,6 +22,7 @@
 #include <QDateTime>
 #include <QFile>
 #include <QDir>
+#include <QTimer>
 #include <algorithm>
 
 // Helper: KTextEditor actions live in two places:
@@ -913,6 +914,13 @@ void EditorWidget::saveDocument() {
     m_doc->setReadWrite(wasReadWrite);
 }
 
+void EditorWidget::restoreEditorFocus() {
+    if (m_view) {
+        QWidget *focusTarget = m_view->focusProxy() ? m_view->focusProxy() : m_view;
+        focusTarget->setFocus(Qt::OtherFocusReason);
+    }
+}
+
 void EditorWidget::focusOutEvent(QFocusEvent *event) {
     if (m_isActive) {
         const auto reason = event->reason();
@@ -940,6 +948,7 @@ bool EditorWidget::loadFile(const QString &filePath) {
         if (resBtn == QMessageBox::Save) {
             m_doc->documentSave();
         }
+        restoreEditorFocus();
     }
 
     // Set config BEFORE opening to pre-empt global katepartrc defaults
@@ -1093,6 +1102,26 @@ void EditorWidget::setupMenu() {
     // Native highlighting/mode menus
     if (QAction* a = kteAction(m_view, "tools_highlighting")) viewMenu->addAction(a);
     if (QAction* a = kteAction(m_view, "tools_mode")) viewMenu->addAction(a);
+
+    // Set up focus restoration for all menu actions recursively
+    auto setupFocusRestoration = [this](auto &self, QMenu *menu) -> void {
+        connect(menu, &QMenu::aboutToHide, this, [this]() {
+            QTimer::singleShot(0, this, &EditorWidget::restoreEditorFocus);
+        });
+        for (QAction *action : menu->actions()) {
+            if (action->menu()) {
+                self(self, action->menu());
+            } else {
+                connect(action, &QAction::triggered, this, &EditorWidget::restoreEditorFocus);
+            }
+        }
+    };
+
+    for (QAction *menuAction : m_menuBar->actions()) {
+        if (menuAction->menu()) {
+            setupFocusRestoration(setupFocusRestoration, menuAction->menu());
+        }
+    }
 }
 
 void EditorWidget::setupToolBar() {
@@ -1150,6 +1179,7 @@ void EditorWidget::setupToolBar() {
         if (widget) {
             widget->setFocusPolicy(Qt::NoFocus);
         }
+        connect(action, &QAction::triggered, this, &EditorWidget::restoreEditorFocus);
     }
 }
 
@@ -1450,6 +1480,9 @@ void EditorWidget::showDiffAgainstDisk() {
     layout->addWidget(edit);
     dlg->setLayout(layout);
     dlg->setAttribute(Qt::WA_DeleteOnClose, true);
+    connect(dlg, &QDialog::finished, this, [this](int) {
+        restoreEditorFocus();
+    });
     dlg->show();
 }
 
