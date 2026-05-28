@@ -88,7 +88,11 @@ private:
     KTextEditor::Cursor findWordStart(const KTextEditor::Cursor &cursor) const;
     KTextEditor::Cursor findWordEnd(const KTextEditor::Cursor &cursor) const;
     void saveDocument();
+    void saveCopyAs();
     void replaceSelectionPreservingRange(const QString &newText);
+    void toggleReadOnly();
+    void restoreEditorFocus();
+    void handleFindReplaceOrGoto(const QString &actionName, bool hadSelection, const QString &selectionText = QString());
 
     // Focus handling
     bool m_isActive;

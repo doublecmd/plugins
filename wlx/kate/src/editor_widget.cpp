@@ -7,6 +7,10 @@
 #include <QUrl>
 #include <QActionGroup>
 #include <QApplication>
+#include <QSpinBox>
+#include <QLineEdit>
+#include <QFileDialog>
+#include <QTextStream>
 #include <QFont>
 #include <QStringList>
 #include <QMouseEvent>
@@ -22,7 +26,7 @@
 #include <QDateTime>
 #include <QFile>
 #include <QDir>
-#include <QSet>
+#include <QTimer>
 #include <algorithm>
 
 // Helper: KTextEditor actions live in two places:
@@ -83,10 +87,11 @@ EditorWidget::EditorWidget(QWidget *parent)
     // Disable swap files as early as possible before the view is created.
     forceDisableAutoReload();
     m_view = m_doc->createView(this);
-    m_zoomLevel = m_view->font().pointSize();
+    m_zoomLevel = m_view->configValue(QStringLiteral("font")).value<QFont>().pointSize();
     
     // Create UI Elements
     m_menuBar = new QMenuBar(this);
+    m_menuBar->setFocusPolicy(Qt::NoFocus);
     // Unmissable marker so we can confirm which binary DC is running.
     m_menuBar->setNativeMenuBar(false);
     m_toolbar = new QToolBar(this);
@@ -356,6 +361,11 @@ bool EditorWidget::eventFilter(QObject *obj, QEvent *event) {
                 (key == Qt::Key_Z && (mods & Qt::ControlModifier)) ||
                 (key == Qt::Key_Y && (mods & Qt::ControlModifier)) ||
                 (key == Qt::Key_W && (mods & Qt::ControlModifier)) ||
+                (key == Qt::Key_R && (mods & Qt::AltModifier) && (mods & Qt::ShiftModifier)) ||
+                (key == Qt::Key_P && (mods & Qt::ControlModifier)) ||
+                ((key == Qt::Key_Plus || key == Qt::Key_Equal) && (mods & Qt::ControlModifier)) ||
+                (key == Qt::Key_Minus && (mods & Qt::ControlModifier)) ||
+                (key == Qt::Key_0 && (mods & Qt::ControlModifier)) ||
                 (key == Qt::Key_B && (mods & Qt::ControlModifier) && (mods & Qt::ShiftModifier)) ||
                 key == Qt::Key_Left || key == Qt::Key_Right || key == Qt::Key_Up || key == Qt::Key_Down ||
                 key == Qt::Key_Home || key == Qt::Key_End || key == Qt::Key_PageUp || key == Qt::Key_PageDown) {
@@ -442,29 +452,42 @@ bool EditorWidget::eventFilter(QObject *obj, QEvent *event) {
                         if (a->isEnabled()) { a->trigger(); triggered = true; }
                     }
                 } else if (key == Qt::Key_Z && (mods & Qt::ControlModifier)) {
-                    if (QAction *a = kteAction(m_view, "edit_undo")) {
-                        if (a->isEnabled()) { a->trigger(); triggered = true; }
+                    if (mods & Qt::ShiftModifier) {
+                        if (QAction *a = kteAction(m_view, "edit_redo")) {
+                            if (a->isEnabled()) { a->trigger(); triggered = true; }
+                        }
+                    } else {
+                        if (QAction *a = kteAction(m_view, "edit_undo")) {
+                            if (a->isEnabled()) { a->trigger(); triggered = true; }
+                        }
                     }
                 } else if (key == Qt::Key_Y && (mods & Qt::ControlModifier)) {
                     if (QAction *a = kteAction(m_view, "edit_redo")) {
                         if (a->isEnabled()) { a->trigger(); triggered = true; }
                     }
+                } else if (key == Qt::Key_S && (mods & Qt::ControlModifier) && (mods & Qt::ShiftModifier)) {
+                    if (m_doc) m_doc->documentSaveAs();
+                    triggered = true;
                 } else if (key == Qt::Key_S && (mods & Qt::ControlModifier)) {
                     saveDocument();
                     triggered = true;
+                } else if (key == Qt::Key_P && (mods & Qt::ControlModifier)) {
+                    if (m_doc) m_doc->print();
+                    triggered = true;
+                } else if ((key == Qt::Key_Plus || key == Qt::Key_Equal) && (mods & Qt::ControlModifier)) {
+                    zoomIn();
+                    triggered = true;
+                } else if (key == Qt::Key_Minus && (mods & Qt::ControlModifier)) {
+                    zoomOut();
+                    triggered = true;
+                } else if (key == Qt::Key_0 && (mods & Qt::ControlModifier)) {
+                    zoomReset();
+                    triggered = true;
                 } else if (key == Qt::Key_W && (mods & Qt::ControlModifier)) {
-                    // Ctrl+W: toggle read-only mode
-                    if (m_doc) {
-                        bool nowReadWrite = !m_doc->isReadWrite();
-                        m_doc->setReadWrite(nowReadWrite);
-                        // Sync the toolbar/menu action if it exists
-                        if (m_actionReadOnly && m_actionReadOnly->isCheckable()) {
-                            m_actionReadOnly->blockSignals(true);
-                            m_actionReadOnly->setChecked(!nowReadWrite);
-                            m_actionReadOnly->blockSignals(false);
-                        }
-                        updateStatusBar();
-                    }
+                    toggleReadOnly();
+                    triggered = true;
+                } else if (key == Qt::Key_R && (mods & Qt::AltModifier) && (mods & Qt::ShiftModifier)) {
+                    toggleReadOnly();
                     triggered = true;
                 } else if (key == Qt::Key_B && (mods & Qt::ControlModifier) && (mods & Qt::ShiftModifier)) {
                     if (QAction *a = kteAction(m_view, "set_verticalSelect")) {
@@ -913,6 +936,80 @@ void EditorWidget::saveDocument() {
     m_doc->setReadWrite(wasReadWrite);
 }
 
+void EditorWidget::saveCopyAs() {
+    if (QAction* a = kteAction(m_view, "file_save_copy_as")) {
+        a->trigger();
+    } else {
+        QString filePath = QFileDialog::getSaveFileName(this, "Save Copy As", m_doc ? m_doc->url().toLocalFile() : QString());
+        if (!filePath.isEmpty() && m_doc) {
+            QFile file(filePath);
+            if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+                QTextStream out(&file);
+                out << m_doc->text();
+            }
+        }
+    }
+}
+
+void EditorWidget::restoreEditorFocus() {
+    if (m_view) {
+        QWidget *focusTarget = m_view->focusProxy() ? m_view->focusProxy() : m_view;
+        focusTarget->setFocus(Qt::OtherFocusReason);
+    }
+}
+
+void EditorWidget::handleFindReplaceOrGoto(const QString &actionName, bool hadSelection, const QString &selectionText) {
+    if (actionName == "go_goto_line") {
+        QTimer::singleShot(50, this, [this]() {
+            QWidget *activeModal = QApplication::activeModalWidget();
+            if (activeModal) {
+                QLineEdit *le = activeModal->findChild<QLineEdit*>();
+                if (le) {
+                    le->setFocus();
+                    le->selectAll();
+                    return;
+                }
+                QSpinBox *sb = activeModal->findChild<QSpinBox*>();
+                if (sb) {
+                    sb->setFocus();
+                    sb->selectAll();
+                    return;
+                }
+                activeModal->setFocus();
+            }
+        });
+    } else if (actionName == "edit_find" || actionName == "edit_replace") {
+        QTimer::singleShot(50, this, [this, actionName, hadSelection, selectionText]() {
+            if (!m_view) return;
+            QList<QLineEdit*> lineEdits = m_view->findChildren<QLineEdit*>();
+            QList<QLineEdit*> visibleLineEdits;
+            for (QLineEdit *le : lineEdits) {
+                if (le->isVisible()) {
+                    visibleLineEdits.append(le);
+                }
+            }
+            if (visibleLineEdits.isEmpty()) return;
+
+            if (hadSelection && !selectionText.isEmpty()) {
+                visibleLineEdits.first()->setText(selectionText);
+            }
+
+            if (actionName == "edit_find") {
+                visibleLineEdits.first()->setFocus();
+                visibleLineEdits.first()->selectAll();
+            } else if (actionName == "edit_replace") {
+                if (hadSelection && visibleLineEdits.size() >= 2) {
+                    visibleLineEdits.at(1)->setFocus();
+                    visibleLineEdits.at(1)->selectAll();
+                } else {
+                    visibleLineEdits.first()->setFocus();
+                    visibleLineEdits.first()->selectAll();
+                }
+            }
+        });
+    }
+}
+
 void EditorWidget::focusOutEvent(QFocusEvent *event) {
     if (m_isActive) {
         const auto reason = event->reason();
@@ -940,6 +1037,7 @@ bool EditorWidget::loadFile(const QString &filePath) {
         if (resBtn == QMessageBox::Save) {
             m_doc->documentSave();
         }
+        restoreEditorFocus();
     }
 
     // Set config BEFORE opening to pre-empt global katepartrc defaults
@@ -997,20 +1095,42 @@ void EditorWidget::hostSetFocus(bool focus) {
 void EditorWidget::setupMenu() {
     // File
     QMenu *fileMenu = m_menuBar->addMenu("&File");
-    QAction *saveAction = new QAction("Save", this);
+    
+    QAction *saveAction = new QAction(QIcon::fromTheme("document-save"), "Save", this);
+    saveAction->setShortcut(QKeySequence("Ctrl+S"));
     connect(saveAction, &QAction::triggered, this, &EditorWidget::saveDocument);
     fileMenu->addAction(saveAction);
     
-    QAction *saveAsAction = new QAction("Save As...", this);
+    QAction *saveAsAction = new QAction(QIcon::fromTheme("document-save-as"), "Save As...", this);
+    saveAsAction->setShortcut(QKeySequence("Ctrl+Shift+S"));
     connect(saveAsAction, &QAction::triggered, m_doc, &KTextEditor::Document::documentSaveAs);
     fileMenu->addAction(saveAsAction);
     
+    // Native "Save As with Encoding" action
+    if (QAction* a = kteAction(m_view, "file_save_as_with_encoding")) {
+        a->setText("Save As with Encoding...");
+        a->setIcon(QIcon::fromTheme("document-save-as"));
+        fileMenu->addAction(a);
+    }
+    
+    QAction *saveCopyAsAction = new QAction(QIcon::fromTheme("document-save-as"), "Save Copy As...", this);
+    connect(saveCopyAsAction, &QAction::triggered, this, &EditorWidget::saveCopyAs);
+    fileMenu->addAction(saveCopyAsAction);
+    
+    fileMenu->addSeparator();
+
+    QAction *printAction = new QAction(QIcon::fromTheme("document-print"), "Print...", this);
+    printAction->setShortcut(QKeySequence("Ctrl+P"));
+    connect(printAction, &QAction::triggered, this, [this]() {
+        if (m_doc) m_doc->print();
+    });
+    fileMenu->addAction(printAction);
+    
+    fileMenu->addSeparator();
+
     QAction *reloadAction = new QAction("Reload from Disk", this);
     connect(reloadAction, &QAction::triggered, m_doc, &KTextEditor::Document::documentReload);
     fileMenu->addAction(reloadAction);
-    
-    // Native "Save As with Encoding" action
-    if (QAction* a = kteAction(m_view, "file_save_as_with_encoding")) fileMenu->addAction(a);
     
     // Native Encoding submenu
     if (QAction* a = kteAction(m_view, "set_encoding")) fileMenu->addAction(a);
@@ -1078,20 +1198,43 @@ void EditorWidget::setupMenu() {
     viewMenu->addAction(m_actionShowHidden);
     
     viewMenu->addSeparator();
-    QMenu *zoomMenu = viewMenu->addMenu("Zoom");
-    zoomMenu->addAction("Zoom In", this, &EditorWidget::zoomIn);
-    zoomMenu->addAction("Zoom Out", this, &EditorWidget::zoomOut);
-    zoomMenu->addAction("Reset Zoom", this, &EditorWidget::zoomReset);
+    
+    QAction *enlargeFontAction = new QAction(QIcon::fromTheme("zoom-in"), "Enlarge Font", this);
+    enlargeFontAction->setShortcut(QKeySequence("Ctrl++"));
+    connect(enlargeFontAction, &QAction::triggered, this, &EditorWidget::zoomIn);
+    viewMenu->addAction(enlargeFontAction);
+
+    QAction *shrinkFontAction = new QAction(QIcon::fromTheme("zoom-out"), "Shrink Font", this);
+    shrinkFontAction->setShortcut(QKeySequence("Ctrl+-"));
+    connect(shrinkFontAction, &QAction::triggered, this, &EditorWidget::zoomOut);
+    viewMenu->addAction(shrinkFontAction);
+
+    QAction *resetFontAction = new QAction(QIcon::fromTheme("zoom-original"), "Reset Font Size", this);
+    resetFontAction->setShortcut(QKeySequence("Ctrl+0"));
+    connect(resetFontAction, &QAction::triggered, this, &EditorWidget::zoomReset);
+    viewMenu->addAction(resetFontAction);
+
+    viewMenu->addSeparator();
+
+    if (QAction* a = kteAction(m_view, "force_rtl_direction")) {
+        a->setText("Force RTL Direction");
+        viewMenu->addAction(a);
+    }
+
     viewMenu->addSeparator();
     
     // Native read-only toggle
     if (QAction* a = kteAction(m_view, "tools_toggle_write_lock")) {
         m_actionReadOnly = a;
+        m_actionReadOnly->setShortcuts({QKeySequence("Ctrl+W"), QKeySequence("Alt+Shift+R")});
         viewMenu->addAction(a);
     } else {
         m_actionReadOnly = new QAction("Read-Only Mode", this);
         m_actionReadOnly->setCheckable(true);
-        connect(m_actionReadOnly, &QAction::toggled, this, [this](bool checked){ if (m_doc) m_doc->setReadWrite(!checked); });
+        m_actionReadOnly->setShortcuts({QKeySequence("Ctrl+W"), QKeySequence("Alt+Shift+R")});
+        connect(m_actionReadOnly, &QAction::triggered, this, [this](bool checked){
+            if (m_doc) m_doc->setReadWrite(!checked);
+        });
         viewMenu->addAction(m_actionReadOnly);
     }
     
@@ -1101,15 +1244,75 @@ void EditorWidget::setupMenu() {
     // Native highlighting/mode menus
     if (QAction* a = kteAction(m_view, "tools_highlighting")) viewMenu->addAction(a);
     if (QAction* a = kteAction(m_view, "tools_mode")) viewMenu->addAction(a);
+
+    QAction *findAct = kteAction(m_view, "edit_find");
+    QAction *replaceAct = kteAction(m_view, "edit_replace");
+    QAction *gotoAct = kteAction(m_view, "go_goto_line");
+
+    if (findAct) {
+        findAct->setObjectName("edit_find");
+        connect(findAct, &QAction::triggered, this, [this]() {
+            QString selText = (m_view && m_view->selection()) ? m_view->selectionText() : QString();
+            handleFindReplaceOrGoto("edit_find", !selText.isEmpty(), selText);
+        });
+    }
+    if (replaceAct) {
+        replaceAct->setObjectName("edit_replace");
+        connect(replaceAct, &QAction::triggered, this, [this]() {
+            QString selText = (m_view && m_view->selection()) ? m_view->selectionText() : QString();
+            handleFindReplaceOrGoto("edit_replace", !selText.isEmpty(), selText);
+        });
+    }
+    if (gotoAct) {
+        gotoAct->setObjectName("go_goto_line");
+        connect(gotoAct, &QAction::triggered, this, [this]() {
+            handleFindReplaceOrGoto("go_goto_line", false, QString());
+        });
+    }
+
+    // Set up focus restoration for all menu actions recursively
+    auto setupFocusRestoration = [this, findAct, replaceAct, gotoAct](auto &self, QMenu *menu) -> void {
+        connect(menu, &QMenu::aboutToHide, this, [this, findAct, replaceAct, gotoAct, menu]() {
+            QAction *activeAct = menu->activeAction();
+            if (activeAct && (activeAct == findAct || activeAct == replaceAct || activeAct == gotoAct)) {
+                return;
+            }
+            QTimer::singleShot(0, this, &EditorWidget::restoreEditorFocus);
+        });
+        for (QAction *action : menu->actions()) {
+            if (action->menu()) {
+                self(self, action->menu());
+            } else {
+                if (action == findAct || action == replaceAct || action == gotoAct) {
+                    continue;
+                }
+                connect(action, &QAction::triggered, this, &EditorWidget::restoreEditorFocus);
+            }
+        }
+    };
+
+    for (QAction *menuAction : m_menuBar->actions()) {
+        if (menuAction->menu()) {
+            setupFocusRestoration(setupFocusRestoration, menuAction->menu());
+        }
+    }
 }
 
 void EditorWidget::setupToolBar() {
     m_toolbar->setMovable(false);
     m_toolbar->setIconSize(QSize(20, 20));
+    m_toolbar->setFocusPolicy(Qt::NoFocus);
 
     QAction *saveAction = new QAction(QIcon::fromTheme("document-save"), "Save", this);
     connect(saveAction, &QAction::triggered, this, &EditorWidget::saveDocument);
     m_toolbar->addAction(saveAction);
+    
+    QAction *saveAsAction = new QAction(QIcon::fromTheme("document-save-as"), "Save As", this);
+    connect(saveAsAction, &QAction::triggered, this, [this]() {
+        if (QAction* a = kteAction(m_view, "file_save_as")) a->trigger();
+        else if (m_doc) m_doc->documentSaveAs();
+    });
+    m_toolbar->addAction(saveAsAction);
     
     m_toolbar->addSeparator();
 
@@ -1124,6 +1327,14 @@ void EditorWidget::setupToolBar() {
         if (QAction* a = kteAction(m_view, "edit_redo")) a->trigger();
     });
     m_toolbar->addAction(redoAction);
+
+    m_toolbar->addSeparator();
+
+    QAction *printAction = new QAction(QIcon::fromTheme("document-print"), "Print", this);
+    connect(printAction, &QAction::triggered, this, [this]() {
+        if (m_doc) m_doc->print();
+    });
+    m_toolbar->addAction(printAction);
 
     m_toolbar->addSeparator();
 
@@ -1151,10 +1362,22 @@ void EditorWidget::setupToolBar() {
         m_actionWordWrap->setIcon(QIcon::fromTheme("format-text-direction-ltr"));
         m_toolbar->addAction(m_actionWordWrap);
     }
+
+    for (QAction *action : m_toolbar->actions()) {
+        QWidget *widget = m_toolbar->widgetForAction(action);
+        if (widget) {
+            widget->setFocusPolicy(Qt::NoFocus);
+        }
+        if (action == findAction || action == replaceAction) {
+            continue;
+        }
+        connect(action, &QAction::triggered, this, &EditorWidget::restoreEditorFocus);
+    }
 }
 
 void EditorWidget::setupStatusBar() {
     m_statusBar = new QWidget(this);
+    m_statusBar->setFocusPolicy(Qt::NoFocus);
     m_statusLayout = new QHBoxLayout(m_statusBar);
     m_statusLayout->setContentsMargins(6, 2, 6, 2);
     
@@ -1251,40 +1474,48 @@ void EditorWidget::setEncoding(const QString& encoding) {
     }
 }
 
-// Zoom: manipulate the view's font directly since KTE has no public zoom actions
+// Zoom: trigger native zoom actions or fallback to direct font size manipulation
 void EditorWidget::zoomIn() {
-    if (!m_view) return;
-    QFont f = m_view->font();
-    f.setPointSize(f.pointSize() + 1);
-    m_view->setFont(f);
+    if (QAction* a = kteAction(m_view, "view_inc_font_sizes")) {
+        a->trigger();
+    } else if (m_view) {
+        QFont f = m_view->configValue(QStringLiteral("font")).value<QFont>();
+        f.setPointSize(f.pointSize() + 1);
+        m_view->setConfigValue(QStringLiteral("font"), f);
+    }
     updateStatusBar();
 }
 
 void EditorWidget::zoomOut() {
-    if (!m_view) return;
-    QFont f = m_view->font();
-    if (f.pointSize() > 4) {
-        f.setPointSize(f.pointSize() - 1);
-        m_view->setFont(f);
+    if (QAction* a = kteAction(m_view, "view_dec_font_sizes")) {
+        a->trigger();
+    } else if (m_view) {
+        QFont f = m_view->configValue(QStringLiteral("font")).value<QFont>();
+        if (f.pointSize() > 4) {
+            f.setPointSize(f.pointSize() - 1);
+            m_view->setConfigValue(QStringLiteral("font"), f);
+        }
     }
     updateStatusBar();
 }
 
 void EditorWidget::zoomReset() {
-    if (!m_view) return;
-    QFont f = m_view->font();
-    f.setPointSize(m_zoomLevel); // Reset to the initial size
-    m_view->setFont(f);
+    if (QAction* a = kteAction(m_view, "view_reset_font_sizes")) {
+        a->trigger();
+    } else if (m_view) {
+        QFont f = m_view->configValue(QStringLiteral("font")).value<QFont>();
+        f.setPointSize(m_zoomLevel);
+        m_view->setConfigValue(QStringLiteral("font"), f);
+    }
     updateStatusBar();
 }
 
 void EditorWidget::replaceSelectionPreservingRange(const QString &newText) {
-    if (!m_view || !m_view->selection()) return;
     KTextEditor::Range oldRange = m_view->selectionRange();
     KTextEditor::Cursor start = oldRange.start();
-    
+
     m_doc->replaceText(oldRange, newText);
-    
+
     QStringList lines = newText.split('\n');
     KTextEditor::Cursor end;
     if (lines.size() == 1) {
@@ -1295,21 +1526,34 @@ void EditorWidget::replaceSelectionPreservingRange(const QString &newText) {
     m_view->setSelection(KTextEditor::Range(start, end));
 }
 
+void EditorWidget::toggleReadOnly() {
+    if (m_doc) {
+        bool nowReadWrite = !m_doc->isReadWrite();
+        m_doc->setReadWrite(nowReadWrite);
+        if (m_actionReadOnly && m_actionReadOnly->isCheckable()) {
+            m_actionReadOnly->blockSignals(true);
+            m_actionReadOnly->setChecked(!nowReadWrite);
+            m_actionReadOnly->blockSignals(false);
+        }
+        updateStatusBar();
+    }
+}
+
 void EditorWidget::convertToTitleCase() {
     if (!m_view || !m_view->selection()) return;
     QString text = m_view->selectionText();
     QString result;
-    
+
     int i = 0;
     int len = text.length();
-    
+
     struct WordToken {
         int start;
         int length;
         bool isWord;
     };
     QList<WordToken> tokens;
-    
+
     while (i < len) {
         if (text[i].isLetter()) {
             int start = i;
@@ -1325,13 +1569,13 @@ void EditorWidget::convertToTitleCase() {
             tokens.append({start, i - start, false});
         }
     }
-    
+
     static const QSet<QString> minorWords = {
         "a", "an", "the",
         "and", "but", "for", "or", "nor",
         "at", "by", "to", "of", "in", "with", "on", "from", "as"
     };
-    
+
     int firstWordIdx = -1;
     int lastWordIdx = -1;
     for (int j = 0; j < tokens.size(); ++j) {
@@ -1340,7 +1584,7 @@ void EditorWidget::convertToTitleCase() {
             lastWordIdx = j;
         }
     }
-    
+
     for (int j = 0; j < tokens.size(); ++j) {
         QString part = text.mid(tokens[j].start, tokens[j].length);
         if (tokens[j].isWord) {
@@ -1354,7 +1598,7 @@ void EditorWidget::convertToTitleCase() {
             result += part;
         }
     }
-    
+
     replaceSelectionPreservingRange(result);
 }
 
@@ -1548,6 +1792,7 @@ void EditorWidget::convertToPathCase() {
     replaceSelectionPreservingRange(result);
 }
 
+
 void EditorWidget::convertEolToWin() {
     if (!m_doc) return;
     QString txt = m_doc->text();
@@ -1644,6 +1889,9 @@ void EditorWidget::showDiffAgainstDisk() {
     layout->addWidget(edit);
     dlg->setLayout(layout);
     dlg->setAttribute(Qt::WA_DeleteOnClose, true);
+    connect(dlg, &QDialog::finished, this, [this](int) {
+        restoreEditorFocus();
+    });
     dlg->show();
 }
 
