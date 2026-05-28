@@ -9,7 +9,6 @@
 #define lc_newparams	2
 #define lc_selectall	3
 #define lc_setpercent	4
-#define lc_focus	5
 
 #define lcp_wraptext	1
 #define lcp_fittowindow 2

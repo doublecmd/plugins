@@ -142,11 +142,6 @@ int DCPCALL ListSendCommand(HWND ListWin, int Command, int Parameter) {
         case lc_selectall:
             editor->selectAll();
             return LISTPLUGIN_OK;
-        case lc_focus:
-            // DC uses lc_focus to indicate focus gained/lost.
-            // Parameter: 1 = focus gained, 0 = focus lost (common convention).
-            editor->hostSetFocus(Parameter != 0);
-            return LISTPLUGIN_OK;
     }
     
     return LISTPLUGIN_ERROR;

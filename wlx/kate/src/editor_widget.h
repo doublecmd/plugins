@@ -28,7 +28,6 @@ public:
     
     void copySelection();
     void selectAll();
-    void hostSetFocus(bool focus);
     QString currentFilePath() const;
     bool isModified() const;
 

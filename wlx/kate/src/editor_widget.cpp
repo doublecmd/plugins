@@ -87,6 +87,7 @@ EditorWidget::EditorWidget(QWidget *parent)
     // Disable swap files as early as possible before the view is created.
     forceDisableAutoReload();
     m_view = m_doc->createView(this);
+    setFocusProxy(m_view);
     m_zoomLevel = m_view->configValue(QStringLiteral("font")).value<QFont>().pointSize();
     
     // Create UI Elements
@@ -238,6 +239,8 @@ EditorWidget::EditorWidget(QWidget *parent)
             QWidget *focusTarget = m_view->focusProxy() ? m_view->focusProxy() : m_view;
             focusTarget->setFocus(Qt::OtherFocusReason);
             m_isRestoringFocus = false;
+        } else {
+            m_isActive = false;
         }
     });
 
@@ -327,6 +330,12 @@ KTextEditor::Cursor EditorWidget::findWordEnd(const KTextEditor::Cursor &cursor)
 }
 
 bool EditorWidget::eventFilter(QObject *obj, QEvent *event) {
+    if (event->type() == QEvent::FocusIn) {
+        if (obj == m_view || obj == m_view->focusProxy()) {
+            m_isActive = true;
+        }
+    }
+
     // Detect clicks outside our editor panel so Double Commander can regain focus.
     if (event->type() == QEvent::MouseButtonPress && m_isActive) {
         auto *me = static_cast<QMouseEvent*>(event);
@@ -1080,16 +1089,6 @@ QString EditorWidget::currentFilePath() const {
 
 bool EditorWidget::isModified() const {
     return m_doc ? m_doc->isModified() : false;
-}
-
-void EditorWidget::hostSetFocus(bool focus) {
-    if (focus) {
-        setActive(true);
-        setFocus(Qt::OtherFocusReason);
-        if (m_view) m_view->setFocus(Qt::OtherFocusReason);
-    } else {
-        setActive(false);
-    }
 }
 
 void EditorWidget::setupMenu() {
