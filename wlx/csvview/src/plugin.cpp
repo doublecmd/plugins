@@ -122,6 +122,8 @@ public:
 	void copySelection(char separator);
 	QString getSelectionAsText(char separator);
 	void pasteSelection();
+	void pasteSelectionAt(int atRow);
+	void insertEmptyRows(int count, int atRow);
 	void deleteSelection();
 
 protected:
@@ -596,6 +598,22 @@ QString CsvViewerWidget::getSelectionAsText(char separator)
 
 void CsvViewerWidget::pasteSelection()
 {
+	int insertRowIdx = m_view->rowCount();
+	QModelIndexList sel = m_view->selectionModel()->selectedIndexes();
+	if (!sel.isEmpty()) {
+		int minRow = m_view->rowCount();
+		for (const QModelIndex &index : sel) {
+			if (index.row() < minRow) {
+				minRow = index.row();
+			}
+		}
+		insertRowIdx = minRow;
+	}
+	pasteSelectionAt(insertRowIdx);
+}
+
+void CsvViewerWidget::pasteSelectionAt(int atRow)
+{
 	int targetCols = m_view->columnCount();
 	if (targetCols <= 0) return;
 
@@ -637,28 +655,31 @@ void CsvViewerWidget::pasteSelection()
 	}
 	if (lines.isEmpty()) return;
 
-	int insertRowIdx = m_view->rowCount();
-	QModelIndexList sel = m_view->selectionModel()->selectedIndexes();
-	if (!sel.isEmpty()) {
-		int minRow = m_view->rowCount();
-		for (const QModelIndex &index : sel) {
-			if (index.row() < minRow) {
-				minRow = index.row();
-			}
-		}
-		insertRowIdx = minRow;
-	}
-
 	int rowsToInsert = lines.size();
 	for (int i = 0; i < rowsToInsert; ++i) {
-		m_view->insertRow(insertRowIdx + i);
+		m_view->insertRow(atRow + i);
 		QStringList list = parse_line(lines.at(i).toUtf8(), m_encoding, sep);
 		for (int c = 0; c < targetCols; ++c) {
 			QString cellText = c < list.size() ? list.at(c).trimmed() : "";
 			QTableWidgetItem *item = new QTableWidgetItem(cellText);
 			item->setToolTip(cellText);
 			item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsEditable);
-			m_view->setItem(insertRowIdx + i, c, item);
+			m_view->setItem(atRow + i, c, item);
+		}
+	}
+}
+
+void CsvViewerWidget::insertEmptyRows(int count, int atRow)
+{
+	int targetCols = m_view->columnCount();
+	if (targetCols <= 0 || count <= 0) return;
+
+	for (int i = 0; i < count; ++i) {
+		m_view->insertRow(atRow + i);
+		for (int c = 0; c < targetCols; ++c) {
+			QTableWidgetItem *item = new QTableWidgetItem("");
+			item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsEditable);
+			m_view->setItem(atRow + i, c, item);
 		}
 	}
 }
@@ -688,31 +709,68 @@ void CsvViewerWidget::showContextMenu(const QPoint &pos)
 	QAction *actCopyCSV = nullptr;
 	QAction *actDelete = nullptr;
 
-	if (m_view->selectionModel()->hasSelection()) {
+	QAction *actInsertAbove = nullptr;
+	QAction *actInsertBelow = nullptr;
+	QAction *actPasteAbove = nullptr;
+	QAction *actPasteBelow = nullptr;
+
+	int minRow = m_view->rowCount();
+	int maxRow = -1;
+	int numRows = 0;
+
+	QModelIndexList sel = m_view->selectionModel()->selectedIndexes();
+	if (!sel.isEmpty()) {
+		QSet<int> rows;
+		for (const QModelIndex &index : sel) {
+			rows.insert(index.row());
+			if (index.row() < minRow) minRow = index.row();
+			if (index.row() > maxRow) maxRow = index.row();
+		}
+		numRows = rows.size();
+		
 		actCopyTSV = menu.addAction("Copy Selection as TSV");
 		actCopyCSV = menu.addAction("Copy Selection as CSV");
 		menu.addSeparator();
 		actDelete = menu.addAction("Delete Selected Rows");
+	} else {
+		int clickedRow = m_view->rowAt(pos.y());
+		if (clickedRow >= 0) {
+			minRow = maxRow = clickedRow;
+			numRows = 1;
+		}
 	}
 
-	QAction *actPaste = nullptr;
-	QString clipboardText = QApplication::clipboard()->text();
-	if (!clipboardText.isEmpty()) {
-		if (m_view->selectionModel()->hasSelection()) {
+	if (numRows > 0) {
+		menu.addSeparator();
+		QString rowStr = (numRows == 1) ? "1 row" : QString("%1 rows").arg(numRows);
+		actInsertAbove = menu.addAction(QString("Insert %1 above").arg(rowStr));
+		actInsertBelow = menu.addAction(QString("Insert %1 below").arg(rowStr));
+		
+		QString clipboardText = QApplication::clipboard()->text();
+		if (!clipboardText.isEmpty()) {
 			menu.addSeparator();
+			actPasteAbove = menu.addAction("Insert from Clipboard above");
+			actPasteBelow = menu.addAction("Insert from Clipboard below");
 		}
-		actPaste = menu.addAction("Insert from Clipboard");
 	}
 
 	QAction *res = menu.exec(m_view->viewport()->mapToGlobal(pos));
+	if (!res) return;
+
 	if (res == actCopyTSV) {
 		copySelection('\t');
 	} else if (res == actCopyCSV) {
 		copySelection(',');
 	} else if (res == actDelete) {
 		deleteSelection();
-	} else if (res == actPaste) {
-		pasteSelection();
+	} else if (res == actInsertAbove) {
+		insertEmptyRows(numRows, minRow);
+	} else if (res == actInsertBelow) {
+		insertEmptyRows(numRows, maxRow + 1);
+	} else if (res == actPasteAbove) {
+		pasteSelectionAt(minRow);
+	} else if (res == actPasteBelow) {
+		pasteSelectionAt(maxRow + 1);
 	}
 }
 
