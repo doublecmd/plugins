@@ -1,5 +1,5 @@
 fb2wdx.lua
-2026.04.23
+2026.05.30
 
 Get some FictionBook2 (FB2) information (see "4. Fields" below).
 Cross-platform.
