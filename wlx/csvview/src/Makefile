@@ -15,7 +15,7 @@ libs := $(ENCA_LIB)
 includes := -I../../../sdk -I$(ENCA_DIR)/lib
 
 qt5_libs := `pkg-config --cflags --libs Qt5Widgets glib-2.0`
-qt6_libs := `pkg-config --cflags --libs Qt6Widgets Qt6Core Qt6Gui glib-2.0`
+qt6_libs := `pkg-config --cflags --libs Qt6Widgets Qt6Core Qt6Gui Qt6PrintSupport glib-2.0`
 
 plugdir := $(shell basename '$(realpath ..)')
 plugtype := $(shell basename '$(realpath ../..)')

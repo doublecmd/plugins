@@ -1,83 +1,98 @@
-#include <QFile>
-#include <QTableWidget>
-#include <QHeaderView>
 #include <QApplication>
 #include <QClipboard>
-#include <QFileInfo>
-#include <QSettings>
-#include <QMimeData>
-#include <QMessageBox>
-#include <QVBoxLayout>
-#include <QToolBar>
-#include <QAction>
+#include <QFile>
 #include <QFileDialog>
-#include <QMenu>
-#include <QEvent>
-#include <QKeyEvent>
-#include <QChildEvent>
-#include <QTimer>
-#include <QDebug>
+#include <QHeaderView>
+#include <QMessageBox>
 #include <QPointer>
-#include <QSet>
 #include <QRegularExpression>
-#include <algorithm>
+#include <QSettings>
+#include <QTableWidget>
+#include <QTableWidgetItem>
+#include <QToolBar>
+#include <QVBoxLayout>
+#include <QWidget>
+#include <QKeyEvent>
+#include <QMouseEvent>
+#include <QLineEdit>
+#include <QTimer>
+#include <QMenu>
+#include <QUndoStack>
+#include <QUndoCommand>
+#include <QLabel>
+#include <QDesktopServices>
+#include <QUrl>
+#include <QPainter>
+#include <QPixmap>
+#include <QStyledItemDelegate>
+#include <QTextOption>
+#include <QTextDocument>
+#include <QAbstractTextDocumentLayout>
+#include <QStackedWidget>
+#include <QTextBrowser>
+#include <QPrinter>
+#include <QPrintDialog>
+#include <QPushButton>
 
-#include <glib.h>
-#include <enca.h>
-
+#include <string.h>
 #include <dlfcn.h>
 #include <libintl.h>
 #include <locale.h>
+#include <glib.h>
+
+#include "wlxplugin.h"
+#include "enca.h"
+
 #define _(STRING) gettext(STRING)
 #define GETTEXT_PACKAGE "plugins"
 
-#include "wlxplugin.h"
+bool gQuoted = true;
+bool gGrid = true;
+bool gResize = true;
+bool gEnca = true;
+bool gReadAll = false;
+QString gLang = "ru";
 
-static bool gEnca = true;
-static bool gResize = false;
-static bool gReadAll = false;
-static bool gQuoted = true;
-static bool gGrid = false;
-static QString gLang;
-
-static QStringList parse_line(QByteArray line, char *enc, char separator)
+QStringList parse_line(const QByteArray &line, const char *encoding, char separator, QList<bool> *wasQuotedOut = nullptr)
 {
-	QStringList list, rawlist;
+	QStringList list;
+	QByteArray utf8Line;
 
-	if (enc[0] != '\0')
+	if (encoding[0] != '\0')
 	{
 		gsize len;
-		gchar *converted = g_convert_with_fallback(line.data(), (gsize)line.size(), "UTF-8", enc, NULL, NULL, &len, NULL);
+		gchar *converted = g_convert_with_fallback(line.data(), line.size(), "UTF-8", encoding, NULL, NULL, &len, NULL);
 
 		if (converted)
-			rawlist = QString(converted).split(QLatin1Char(separator));
-
-		g_free(converted);
+		{
+			utf8Line = QByteArray(converted, len);
+			g_free(converted);
+		}
+		else
+			utf8Line = line;
 	}
 	else
-		rawlist = QString(line).split(QLatin1Char(separator));
+		utf8Line = line;
 
-	if (rawlist.isEmpty())
-		return rawlist;
+	QString text = QString::fromUtf8(utf8Line);
+	
+	if (text.endsWith("\r\n"))
+		text.chop(2);
+	else if (text.endsWith("\n"))
+		text.chop(1);
 
-	if (!rawlist.last().isEmpty() && rawlist.last().back() == '\n')
-		rawlist.last().remove(-1, 1);
+	QStringList rawlist = text.split(QLatin1Char(separator));
+	QString temp;
 
-	if (!gQuoted || separator == '\t')
-		list = rawlist;
-	else
+	for (int c = 0; c < rawlist.size(); c++)
 	{
-		for (int c = 0; c < rawlist.size(); ++c)
+		if (gQuoted)
 		{
-			const QString itm = rawlist.at(c);
-
-			if (!itm.isEmpty() && itm.front() == '"')
+			if (rawlist.at(c).startsWith('"') && !rawlist.at(c).endsWith('"'))
 			{
-				QString temp(itm.trimmed());
+				temp = rawlist.at(c);
 
-				if (itm.back() == '"' && itm.count(QLatin1Char('"')) > 3 && itm.count(QLatin1Char('"')) % 2 == 0)
-					temp = QString(itm).remove(0, 1).remove(-1, 1);
-				else
+				if (c < rawlist.size() - 1)
 				{
 					for (int x = c + 1; x < rawlist.size(); x++)
 					{
@@ -97,9 +112,17 @@ static QStringList parse_line(QByteArray line, char *enc, char separator)
 				}
 
 				list.append(temp);
+				if (wasQuotedOut) wasQuotedOut->append(true);
 			}
 			else
-				list.append(rawlist.at(c).trimmed());
+			{
+				QString val = rawlist.at(c).trimmed();
+				bool quoted = (val.size() >= 2 && val.startsWith('"') && val.endsWith('"'));
+				if (quoted)
+					val = val.mid(1, val.size() - 2);
+				list.append(val);
+				if (wasQuotedOut) wasQuotedOut->append(quoted);
+			}
 
 			list.last().replace("\"\"", "\"");
 		}
@@ -107,6 +130,189 @@ static QStringList parse_line(QByteArray line, char *enc, char separator)
 
 	return list;
 }
+
+static const int WasQuotedRole = Qt::UserRole + 2;
+
+// Custom delegate that wraps text at any character (not just word boundaries)
+class WrapAnywhereDelegate : public QStyledItemDelegate {
+public:
+	using QStyledItemDelegate::QStyledItemDelegate;
+	void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override {
+		QStyleOptionViewItem opt = option;
+		initStyleOption(&opt, index);
+
+		// Let the default style draw everything (background, selection, focus rect)
+		// but without the text
+		QString text = opt.text;
+		opt.text.clear();
+		QApplication::style()->drawControl(QStyle::CE_ItemViewItem, &opt, painter);
+
+		// Now draw the text ourselves with WrapAnywhere
+		if (!text.isEmpty()) {
+			painter->save();
+			QRect textRect = QApplication::style()->subElementRect(QStyle::SE_ItemViewItemText, &opt);
+			painter->setClipRect(textRect);
+			painter->setFont(opt.font);
+
+			QTextOption textOption;
+			textOption.setWrapMode(m_wrap ? QTextOption::WrapAnywhere : QTextOption::NoWrap);
+			textOption.setAlignment(opt.displayAlignment);
+
+			// Use the right color depending on selection state
+			if (opt.state & QStyle::State_Selected)
+				painter->setPen(opt.palette.color(QPalette::HighlightedText));
+			else
+				painter->setPen(opt.palette.color(QPalette::Text));
+
+			painter->drawText(textRect, text, textOption);
+			painter->restore();
+		}
+	}
+	QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override {
+		if (!m_wrap) return QStyledItemDelegate::sizeHint(option, index);
+		QStyleOptionViewItem opt = option;
+		initStyleOption(&opt, index);
+		QRect textRect = QApplication::style()->subElementRect(QStyle::SE_ItemViewItemText, &opt);
+		int width = textRect.width();
+		if (width <= 0) width = opt.rect.width();
+
+		QTextDocument doc;
+		doc.setDefaultFont(opt.font);
+		QTextOption textOption;
+		textOption.setWrapMode(QTextOption::WrapAnywhere);
+		doc.setDefaultTextOption(textOption);
+		doc.setTextWidth(width);
+		doc.setPlainText(opt.text);
+		return QSize(width, qMax((int)doc.size().height(), opt.fontMetrics.height()));
+	}
+	void setWrapAnywhere(bool wrap) { m_wrap = wrap; }
+	bool wrapAnywhere() const { return m_wrap; }
+private:
+	bool m_wrap = false;
+};
+
+class EditCellCommand : public QUndoCommand {
+public:
+	EditCellCommand(QTableWidget *view, int row, int col, const QString &oldText, const QString &newText, QUndoCommand *parent = nullptr)
+		: QUndoCommand(parent), m_view(view), m_row(row), m_col(col), m_oldText(oldText), m_newText(newText) {
+		setText(QString("Edit cell (%1, %2)").arg(row).arg(col));
+	}
+	void undo() override {
+		m_view->blockSignals(true);
+		if (QTableWidgetItem *item = m_view->item(m_row, m_col)) item->setText(m_oldText);
+		m_view->blockSignals(false);
+	}
+	void redo() override {
+		m_view->blockSignals(true);
+		if (QTableWidgetItem *item = m_view->item(m_row, m_col)) item->setText(m_newText);
+		m_view->blockSignals(false);
+	}
+private:
+	QTableWidget *m_view;
+	int m_row, m_col;
+	QString m_oldText, m_newText;
+};
+
+class RowColCommand : public QUndoCommand {
+protected:
+	QTableWidget *m_view;
+	int m_index, m_count;
+	QList<QStringList> m_data;
+	bool m_isRow, m_isInsert;
+public:
+	RowColCommand(QTableWidget *view, int index, int count, bool isRow, bool isInsert, QUndoCommand *parent = nullptr)
+		: QUndoCommand(parent), m_view(view), m_index(index), m_count(count), m_isRow(isRow), m_isInsert(isInsert) {
+		setText(QString("%1 %2 %3(s)").arg(isInsert ? "Insert" : "Delete").arg(count).arg(isRow ? "row" : "col"));
+		if (!isInsert) {
+			for (int i = 0; i < count; ++i) {
+				QStringList list;
+				int limit = isRow ? view->columnCount() : view->rowCount();
+				for (int j = 0; j < limit; ++j) {
+					QTableWidgetItem *item = isRow ? view->item(index + i, j) : view->item(j, index + i);
+					list << (item ? item->text() : "");
+				}
+				m_data << list;
+			}
+		} else {
+			for (int i = 0; i < count; ++i) {
+				QStringList list;
+				int limit = isRow ? view->columnCount() : view->rowCount();
+				for (int j = 0; j < limit; ++j) list << "";
+				m_data << list;
+			}
+		}
+	}
+	void applyInsert() {
+		m_view->blockSignals(true);
+		for (int i = 0; i < m_count; ++i) {
+			if (m_isRow) m_view->insertRow(m_index + i);
+			else m_view->insertColumn(m_index + i);
+			
+			QStringList list = i < m_data.size() ? m_data[i] : QStringList();
+			int limit = m_isRow ? m_view->columnCount() : m_view->rowCount();
+			for (int j = 0; j < limit; ++j) {
+				QString text = j < list.size() ? list[j] : "";
+				QTableWidgetItem *item = new QTableWidgetItem(text);
+				item->setToolTip(text);
+				item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsEditable);
+				if (m_isRow) m_view->setItem(m_index + i, j, item);
+				else m_view->setItem(j, m_index + i, item);
+			}
+		}
+		m_view->blockSignals(false);
+	}
+	void applyDelete() {
+		m_view->blockSignals(true);
+		for (int i = m_count - 1; i >= 0; --i) {
+			if (m_isRow) m_view->removeRow(m_index + i);
+			else m_view->removeColumn(m_index + i);
+		}
+		m_view->blockSignals(false);
+	}
+	void undo() override { if (m_isInsert) applyDelete(); else applyInsert(); }
+	void redo() override { if (m_isInsert) applyInsert(); else applyDelete(); }
+};
+
+// Undo command that stores a full data snapshot (used for sort)
+class DataSnapshotCommand : public QUndoCommand {
+public:
+	DataSnapshotCommand(QTableWidget *view, const QList<QStringList> &before, const QList<QStringList> &after, const QString &text)
+		: m_view(view), m_before(before), m_after(after), m_first(true) { setText(text); }
+	void undo() override { restore(m_before); }
+	void redo() override { if (m_first) { m_first = false; return; } restore(m_after); }
+private:
+	void restore(const QList<QStringList> &data) {
+		m_view->blockSignals(true);
+		for (int r = 0; r < data.size() && r < m_view->rowCount(); ++r)
+			for (int c = 0; c < data[r].size() && c < m_view->columnCount(); ++c)
+				if (QTableWidgetItem *item = m_view->item(r, c)) item->setText(data[r][c]);
+		m_view->blockSignals(false);
+	}
+	QTableWidget *m_view;
+	QList<QStringList> m_before, m_after;
+	bool m_first;
+};
+
+// Undo command for section (row/column) moves - saves full visual order
+class SectionMoveCommand : public QUndoCommand {
+public:
+	SectionMoveCommand(QHeaderView *header, const QList<int> &beforeOrder, const QList<int> &afterOrder, const QString &text)
+		: m_header(header), m_before(beforeOrder), m_after(afterOrder), m_first(true) { setText(text); }
+	void undo() override { restore(m_before); }
+	void redo() override { if (m_first) { m_first = false; return; } restore(m_after); }
+private:
+	void restore(const QList<int> &order) {
+		for (int target = 0; target < order.size(); ++target) {
+			int logical = order[target];
+			int currentVisual = m_header->visualIndex(logical);
+			if (currentVisual != target)
+				m_header->moveSection(currentVisual, target);
+		}
+	}
+	QHeaderView *m_header;
+	QList<int> m_before, m_after;
+	bool m_first;
+};
 
 class CsvViewerWidget : public QWidget
 {
@@ -125,19 +331,37 @@ public:
 	void pasteSelectionAt(int atRow);
 	void insertEmptyRows(int count, int atRow);
 	void deleteSelection();
+	
+	void copyColumnSelection(char separator);
+	void pasteColumnSelectionAt(int atCol);
+	void insertEmptyColumns(int count, int atCol);
+	void deleteColumnSelection();
+
+	void setActive(bool active);
 
 protected:
 	bool eventFilter(QObject *obj, QEvent *event) override;
+
+private slots:
+	void onItemChanged(QTableWidgetItem *item);
+	void onUndoStackCleanChanged(bool clean);
 
 private:
 	void onSave();
 	void onSaveAs();
 	void onReload();
+	void onToggleTextMode(bool checked);
+	void onToggleWordWrap(bool checked);
+	void updateTextView();
 	void showContextMenu(const QPoint &pos);
+	void showColumnContextMenu(const QPoint &pos);
+	void onSortByColumn(int column);
 
 	void installFocusGuard();
 	bool isInputWidget(QWidget *w) const;
+	bool isSectionSelected(QHeaderView *header, int logicalIndex) const;
 	void restoreFocusToDC();
+	void updateRowNumbers();
 
 	QTableWidget *m_view;
 	QToolBar *m_toolbar;
@@ -149,10 +373,33 @@ private:
 	
 	QPointer<QWidget> m_savedFocusWidget;
 	QPointer<QWidget> m_activeInput;
+	
+	QUndoStack *m_undoStack;
+	QLabel *m_dirtyIndicator;
+	bool m_isProgrammaticChange;
+
+	QStackedWidget *m_stackedWidget;
+	QTextBrowser *m_textBrowser;
+	WrapAnywhereDelegate *m_wrapDelegate;
+	QAction *m_actTextMode;
+	QAction *m_actWordWrap;
+
+	int m_lastSortColumn;
+	Qt::SortOrder m_lastSortOrder;
+
+	// Drag-to-move state
+	QHeaderView *m_dragHeader;
+	int m_dragLogicalIndex;
+	QList<int> m_dragBeforeOrder;
+	QSet<int> m_dragSelectedSections;  // Saved before Qt clears selection
+	bool m_isDraggingSection;
+	QTimer *m_moveDebounceTimer;
+	bool m_isActive;
 };
 
 CsvViewerWidget::CsvViewerWidget(QWidget *parent)
-	: QWidget(parent), m_savedFocusWidget(nullptr), m_activeInput(nullptr), m_separator(','), m_firstLineAsHeader(true)
+	: QWidget(parent), m_savedFocusWidget(nullptr), m_activeInput(nullptr), m_separator(','), m_firstLineAsHeader(true), m_isProgrammaticChange(false),
+	  m_lastSortColumn(-1), m_lastSortOrder(Qt::AscendingOrder), m_dragHeader(nullptr), m_dragLogicalIndex(-1), m_isDraggingSection(false), m_isActive(false)
 {
 	memset(m_encoding, 0, sizeof(m_encoding));
 
@@ -164,25 +411,98 @@ CsvViewerWidget::CsvViewerWidget(QWidget *parent)
 	m_toolbar = new QToolBar(this);
 	m_toolbar->setFocusPolicy(Qt::NoFocus);
 	
-	QAction *actSave = m_toolbar->addAction("Save");
-	actSave->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_S));
+	m_undoStack = new QUndoStack(this);
+
+	QAction *actUndo = new QAction("↶ Undo", this);
+	actUndo->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Z));
+	actUndo->setToolTip("Undo (Ctrl+Z)");
+	actUndo->setEnabled(false);
+	QObject::connect(actUndo, &QAction::triggered, m_undoStack, &QUndoStack::undo);
+	QObject::connect(m_undoStack, &QUndoStack::canUndoChanged, actUndo, &QAction::setEnabled);
 	
-	QAction *actSaveAs = m_toolbar->addAction("Save As...");
-	QAction *actReload = m_toolbar->addAction("Reload");
-	QAction *actHeader = m_toolbar->addAction("Header Row");
+	QAction *actRedo = new QAction("↷ Redo", this);
+	actRedo->setShortcuts({QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Z), QKeySequence(Qt::CTRL | Qt::Key_Y)});
+	actRedo->setToolTip("Redo (Ctrl+Y)");
+	actRedo->setEnabled(false);
+	QObject::connect(actRedo, &QAction::triggered, m_undoStack, &QUndoStack::redo);
+	QObject::connect(m_undoStack, &QUndoStack::canRedoChanged, actRedo, &QAction::setEnabled);
+
+	m_dirtyIndicator = new QLabel("✓", this);
+	m_dirtyIndicator->setContentsMargins(4, 0, 4, 0);
+	m_toolbar->addWidget(m_dirtyIndicator);
+	
+	QAction *actSave = m_toolbar->addAction("🖫 Save");
+	actSave->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_S));
+	actSave->setToolTip("Save (Ctrl+S)");
+	
+	QAction *actSaveAs = m_toolbar->addAction("🖪 Save As...");
+	actSaveAs->setToolTip("Save As...");
+	
+	m_toolbar->addAction(actUndo);
+	m_toolbar->addAction(actRedo);
+
+	QAction *actPrint = m_toolbar->addAction(QString::fromUtf8("\xf0\x9f\x96\xa8\xef\xb8\x8e Print"));
+	actPrint->setToolTip("Print (Ctrl+P)");
+	actPrint->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_P));
+	
+	QAction *actReload = m_toolbar->addAction("⟳ Reload");
+	actReload->setToolTip("Reload file from disk");
+
+	QAction *actHeader = m_toolbar->addAction("\xf0\x9f\x96\x88 Header Row");
 	actHeader->setCheckable(true);
 	actHeader->setChecked(true);
+	actHeader->setToolTip("Toggle First Line As Header");
+
+	m_actTextMode = m_toolbar->addAction(QString::fromUtf8("\xf0\x9f\x91\x81\xef\xb8\x8e Show Text"));
+	m_actTextMode->setCheckable(true);
+	m_actTextMode->setToolTip("Toggle text view mode");
+
+	m_actWordWrap = m_toolbar->addAction(QString::fromUtf8("\xe2\x86\xa9\xef\xb8\x8e Line Wrap"));
+	m_actWordWrap->setCheckable(true);
+	m_actWordWrap->setToolTip("Toggle line wrap");
+
+	QAction *actEditor = m_toolbar->addAction(QString::fromUtf8("\xe2\x86\x97\xef\xb8\x8e Open Externally"));
+	actEditor->setToolTip("Open in default system application");
 
 	addAction(actSave);
 
 	layout->addWidget(m_toolbar);
 
-	m_view = new QTableWidget(this);
-	m_view->setFocusPolicy(Qt::NoFocus);
-	m_view->setContextMenuPolicy(Qt::CustomContextMenu);
-	layout->addWidget(m_view);
+	m_stackedWidget = new QStackedWidget(this);
 
-	// Instead of connecting to slots via moc, use QObject::connect with lambda
+	m_view = new QTableWidget(this);
+	m_view->setFocusPolicy(Qt::ClickFocus);
+	
+	m_view->setSelectionMode(QAbstractItemView::ExtendedSelection);
+	m_view->horizontalHeader()->setSectionsClickable(true);
+	m_view->horizontalHeader()->setHighlightSections(true);
+	m_view->horizontalHeader()->setSectionsMovable(false); // We handle drag-to-select ourselves
+	m_view->horizontalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
+	
+	m_view->verticalHeader()->setSectionsClickable(true);
+	m_view->verticalHeader()->setHighlightSections(true);
+	m_view->verticalHeader()->setSectionsMovable(false); // We handle drag-to-select ourselves
+	m_view->verticalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
+
+	m_view->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
+	m_view->verticalHeader()->setSectionResizeMode(QHeaderView::Interactive);
+
+	m_view->setSortingEnabled(false);
+
+	// Install the custom delegate for character-level wrapping
+	m_wrapDelegate = new WrapAnywhereDelegate(m_view);
+	m_view->setItemDelegate(m_wrapDelegate);
+
+	m_view->setContextMenuPolicy(Qt::CustomContextMenu);
+
+	m_textBrowser = new QTextBrowser(this);
+	m_textBrowser->setOpenLinks(false);
+	m_textBrowser->setReadOnly(true);
+
+	m_stackedWidget->addWidget(m_view);
+	m_stackedWidget->addWidget(m_textBrowser);
+	layout->addWidget(m_stackedWidget);
+
 	QObject::connect(actSave, &QAction::triggered, this, [this]() { onSave(); });
 	QObject::connect(actSaveAs, &QAction::triggered, this, [this]() { onSaveAs(); });
 	QObject::connect(actReload, &QAction::triggered, this, [this]() { onReload(); });
@@ -190,24 +510,163 @@ CsvViewerWidget::CsvViewerWidget(QWidget *parent)
 		m_firstLineAsHeader = checked;
 		onReload();
 	});
+	QObject::connect(actEditor, &QAction::triggered, this, [this]() {
+		QDesktopServices::openUrl(QUrl::fromLocalFile(m_currentFile));
+	});
+	QObject::connect(actPrint, &QAction::triggered, this, [this]() {
+		QPrinter printer(QPrinter::HighResolution);
+		QPrintDialog dlg(&printer, this);
+		if (dlg.exec() != QDialog::Accepted) return;
+
+		int rows = m_view->rowCount();
+		int cols = m_view->columnCount();
+		QString html = "<table border='1' cellspacing='0' cellpadding='4' style='border-collapse:collapse;'>";
+		if (m_firstLineAsHeader) {
+			html += "<tr>";
+			for (int vc = 0; vc < cols; ++vc) {
+				int c = m_view->horizontalHeader()->logicalIndex(vc);
+				QString text = m_view->horizontalHeaderItem(c) ? m_view->horizontalHeaderItem(c)->text().toHtmlEscaped() : "";
+				html += QString("<th style='background:#eee;'>%1</th>").arg(text);
+			}
+			html += "</tr>";
+		}
+		for (int vr = 0; vr < rows; ++vr) {
+			int r = m_view->verticalHeader()->logicalIndex(vr);
+			html += "<tr>";
+			for (int vc = 0; vc < cols; ++vc) {
+				int c = m_view->horizontalHeader()->logicalIndex(vc);
+				QString text = m_view->item(r, c) ? m_view->item(r, c)->text().toHtmlEscaped() : "";
+				html += QString("<td>%1</td>").arg(text);
+			}
+			html += "</tr>";
+		}
+		html += "</table>";
+
+		QTextDocument doc;
+		doc.setHtml(html);
+		doc.print(&printer);
+	});
+	QObject::connect(m_actTextMode, &QAction::toggled, this, &CsvViewerWidget::onToggleTextMode);
+	QObject::connect(m_actWordWrap, &QAction::toggled, this, &CsvViewerWidget::onToggleWordWrap);
+
 	QObject::connect(m_view, &QWidget::customContextMenuRequested, this, [this](const QPoint &pos) { showContextMenu(pos); });
+	QObject::connect(m_view->verticalHeader(), &QWidget::customContextMenuRequested, this, [this](const QPoint &pos) { showContextMenu(pos); });
+	QObject::connect(m_view->horizontalHeader(), &QWidget::customContextMenuRequested, this, [this](const QPoint &pos) { showColumnContextMenu(pos); });
+
+	// Sort by clicking column header
+	QObject::connect(m_view->horizontalHeader(), &QHeaderView::sectionClicked, this, &CsvViewerWidget::onSortByColumn);
+
+	QObject::connect(m_undoStack, &QUndoStack::cleanChanged, this, &CsvViewerWidget::onUndoStackCleanChanged);
+	QObject::connect(m_undoStack, &QUndoStack::indexChanged, this, [this]() { updateRowNumbers(); });
+	QObject::connect(m_view, &QTableWidget::itemChanged, this, &CsvViewerWidget::onItemChanged);
+
+	// Focus management: detect when focus leaves our widget hierarchy
+	connect(qApp, &QApplication::focusChanged, this, [this](QWidget *old, QWidget *now) {
+		if (!m_isActive) return;
+		bool oldInside = old && (old == this || this->isAncestorOf(old));
+		bool nowInside = now && (now == this || this->isAncestorOf(now));
+		if (oldInside && !nowInside) {
+			// Focus left our plugin
+			m_isActive = false;
+			m_activeInput = nullptr;
+		}
+	});
+
+	// Debounce timer for section moves (sectionMoved fires many times during drag)
+	m_moveDebounceTimer = new QTimer(this);
+	m_moveDebounceTimer->setSingleShot(true);
+	m_moveDebounceTimer->setInterval(0);
+	QObject::connect(m_moveDebounceTimer, &QTimer::timeout, this, [this]() {
+		if (!m_isDraggingSection || !m_dragHeader) return;
+
+		int newVisual = m_dragHeader->visualIndex(m_dragLogicalIndex);
+		bool anyMoved = (newVisual != m_dragBeforeOrder.indexOf(m_dragLogicalIndex));
+
+		if (anyMoved) {
+			bool isHorizontal = (m_dragHeader == m_view->horizontalHeader());
+
+			// Current visual order (after Qt moved the dragged section)
+			QList<int> currentOrder;
+			for (int v = 0; v < m_dragHeader->count(); ++v)
+				currentOrder.append(m_dragHeader->logicalIndex(v));
+
+			// Non-selected in current visual order
+			QList<int> nonSelected;
+			for (int li : currentOrder) {
+				if (!m_dragSelectedSections.contains(li))
+					nonSelected.append(li);
+			}
+
+			// Selected in original visual order (preserving relative order)
+			QList<int> selectedInOrder;
+			for (int li : m_dragBeforeOrder) {
+				if (m_dragSelectedSections.contains(li))
+					selectedInOrder.append(li);
+			}
+
+			// First selected item goes to the drop position
+			int insertIdx = qBound(0, newVisual, nonSelected.size());
+
+			// Build target order: nonSelected with selectedInOrder inserted at insertIdx
+			QList<int> targetOrder;
+			for (int i = 0; i < insertIdx; ++i)
+				targetOrder.append(nonSelected[i]);
+			for (int li : selectedInOrder)
+				targetOrder.append(li);
+			for (int i = insertIdx; i < nonSelected.size(); ++i)
+				targetOrder.append(nonSelected[i]);
+
+			// Apply target order via moveSection
+			for (int v = 0; v < targetOrder.size(); ++v) {
+				int logical = targetOrder[v];
+				int curVisual = m_dragHeader->visualIndex(logical);
+				if (curVisual != v)
+					m_dragHeader->moveSection(curVisual, v);
+			}
+
+			QList<int> afterOrder;
+			for (int v = 0; v < m_dragHeader->count(); ++v)
+				afterOrder.append(m_dragHeader->logicalIndex(v));
+			m_undoStack->push(new SectionMoveCommand(m_dragHeader, m_dragBeforeOrder, afterOrder,
+				isHorizontal ? "Move columns" : "Move rows"));
+			updateRowNumbers();
+		}
+
+		m_isDraggingSection = false;
+		m_dragHeader->setSectionsMovable(false);
+		m_dragHeader = nullptr;
+	});
+
+	// Connect sectionMoved to restart the debounce timer
+	auto connectMoveDebounce = [this](QHeaderView *header) {
+		QObject::connect(header, &QHeaderView::sectionMoved, this, [this](int, int, int) {
+			if (m_isDraggingSection)
+				m_moveDebounceTimer->start();
+		});
+	};
+	connectMoveDebounce(m_view->horizontalHeader());
+	connectMoveDebounce(m_view->verticalHeader());
 
 	installFocusGuard();
 }
 
 CsvViewerWidget::~CsvViewerWidget()
 {
+	m_moveDebounceTimer->stop();
+	m_view->blockSignals(true);
+	m_undoStack->blockSignals(true);
 	if (qApp) qApp->removeEventFilter(this);
 }
 
 void CsvViewerWidget::installFocusGuard()
 {
 	if (qApp) qApp->installEventFilter(this);
-	const auto children = findChildren<QWidget*>();
-	for (QWidget *child : children) {
-		if (!isInputWidget(child))
-			child->setFocusPolicy(Qt::NoFocus);
-	}
+	setFocusProxy(m_view);
+}
+
+void CsvViewerWidget::setActive(bool active)
+{
+	m_isActive = active;
 }
 
 bool CsvViewerWidget::isInputWidget(QWidget *w) const
@@ -229,53 +688,406 @@ void CsvViewerWidget::restoreFocusToDC()
 	}
 }
 
+void CsvViewerWidget::updateRowNumbers()
+{
+	QHeaderView *vh = m_view->verticalHeader();
+	m_view->blockSignals(true);
+	for (int v = 0; v < m_view->rowCount(); ++v) {
+		int logical = vh->logicalIndex(v);
+		QTableWidgetItem *item = m_view->verticalHeaderItem(logical);
+		if (!item) {
+			item = new QTableWidgetItem();
+			m_view->setVerticalHeaderItem(logical, item);
+		}
+		item->setText(QString::number(v + 1));
+	}
+	m_view->blockSignals(false);
+}
+
+bool CsvViewerWidget::isSectionSelected(QHeaderView *header, int logicalIndex) const
+{
+	QItemSelectionModel *sel = m_view->selectionModel();
+	if (!sel) return false;
+	bool isHorizontal = (header == m_view->horizontalHeader());
+	if (isHorizontal) {
+		// Check if ALL rows in this column are selected
+		for (int r = 0; r < m_view->rowCount(); ++r) {
+			if (!sel->isSelected(m_view->model()->index(r, logicalIndex)))
+				return false;
+		}
+		return m_view->rowCount() > 0;
+	} else {
+		// Check if ALL columns in this row are selected
+		for (int c = 0; c < m_view->columnCount(); ++c) {
+			if (!sel->isSelected(m_view->model()->index(logicalIndex, c)))
+				return false;
+		}
+		return m_view->columnCount() > 0;
+	}
+}
+
+void CsvViewerWidget::onUndoStackCleanChanged(bool clean) {
+	m_dirtyIndicator->setText(clean ? "✓" : "✱");
+}
+
+void CsvViewerWidget::onItemChanged(QTableWidgetItem *item) {
+	if (m_isProgrammaticChange) return;
+	if (!item) return;
+
+	// Check if we have old text stashed in UserRole
+	QVariant oldData = item->data(Qt::UserRole);
+	if (!oldData.isValid()) return;
+
+	QString oldText = oldData.toString();
+	QString newText = item->text();
+
+	// Clear the stashed value so we don't re-trigger
+	m_isProgrammaticChange = true;
+	item->setData(Qt::UserRole, QVariant());
+	m_isProgrammaticChange = false;
+
+	if (oldText != newText) {
+		// Auto-quote if user introduced separator in a previously unquoted cell
+		if (!item->data(WasQuotedRole).toBool() && newText.contains(m_separator)) {
+			m_isProgrammaticChange = true;
+			item->setData(WasQuotedRole, true);
+			m_isProgrammaticChange = false;
+		}
+		m_isProgrammaticChange = true;
+		item->setText(oldText); // Revert so the undo command applies the new text
+		m_isProgrammaticChange = false;
+		m_undoStack->push(new EditCellCommand(m_view, item->row(), item->column(), oldText, newText));
+	}
+}
+
+void CsvViewerWidget::onToggleTextMode(bool checked) {
+	if (checked) {
+		// Commit any active cell editor before switching to text view
+		if (m_activeInput) {
+			QModelIndex current = m_view->currentIndex();
+			QAbstractItemDelegate *delegate = m_view->itemDelegateForIndex(current);
+			if (delegate)
+				delegate->setModelData(m_activeInput, m_view->model(), current);
+			m_view->closePersistentEditor(m_view->currentItem());
+			m_activeInput = nullptr;
+		}
+		updateTextView();
+		m_stackedWidget->setCurrentWidget(m_textBrowser);
+	} else {
+		m_stackedWidget->setCurrentWidget(m_view);
+	}
+}
+
+void CsvViewerWidget::onToggleWordWrap(bool checked) {
+	// For grid mode: use the custom delegate
+	m_wrapDelegate->setWrapAnywhere(checked);
+	m_view->setWordWrap(checked);
+	if (checked) {
+		m_view->resizeRowsToContents();
+	} else {
+		m_view->verticalHeader()->setDefaultSectionSize(m_view->fontMetrics().height() + 8);
+		m_view->resizeRowsToContents();
+	}
+
+	// For text mode
+	QTextOption opt;
+	opt.setWrapMode(checked ? QTextOption::WrapAnywhere : QTextOption::NoWrap);
+	m_textBrowser->document()->setDefaultTextOption(opt);
+	m_textBrowser->setLineWrapMode(checked ? QTextEdit::WidgetWidth : QTextEdit::NoWrap);
+}
+
+void CsvViewerWidget::updateTextView() {
+	static const char *colors[] = {
+		"#9CA3AF", "#60A5FA", "#4ADE80", "#FBBF24",
+		"#CE9178", "#F87171", "#F44747", "#C084FC"
+	};
+	static const int numColors = 8;
+
+	int rows = m_view->rowCount();
+	int cols = m_view->columnCount();
+	bool useColors = (rows <= 10000);
+	QString sepStr = useColors ? QString(QChar(m_separator)).toHtmlEscaped() : QString(QChar(m_separator));
+
+	if (!useColors) {
+		// Plain text mode for large files
+		QString plain;
+		if (m_firstLineAsHeader) {
+			for (int vc = 0; vc < cols; ++vc) {
+				int c = m_view->horizontalHeader()->logicalIndex(vc);
+				if (vc > 0) plain += sepStr;
+				QTableWidgetItem *hItem = m_view->horizontalHeaderItem(c);
+				QString text = hItem ? hItem->text() : "";
+				if (hItem && hItem->data(WasQuotedRole).toBool()) {
+					text.replace("\"", "\"\"");
+					text = "\"" + text + "\"";
+				}
+				plain += text;
+			}
+			plain += "\n";
+		}
+		for (int vr = 0; vr < rows; ++vr) {
+			int r = m_view->verticalHeader()->logicalIndex(vr);
+			for (int vc = 0; vc < cols; ++vc) {
+				int c = m_view->horizontalHeader()->logicalIndex(vc);
+				if (vc > 0) plain += sepStr;
+				QTableWidgetItem *item = m_view->item(r, c);
+				QString text = item ? item->text() : "";
+				if (item && item->data(WasQuotedRole).toBool()) {
+					text.replace("\"", "\"\"");
+					text = "\"" + text + "\"";
+				}
+				plain += text;
+			}
+			plain += "\n";
+		}
+		m_textBrowser->setPlainText(plain);
+		return;
+	}
+
+	QString html = "<pre style=\"font-family: monospace;\">";
+
+	if (m_firstLineAsHeader) {
+		for (int vc = 0; vc < cols; ++vc) {
+			int c = m_view->horizontalHeader()->logicalIndex(vc);
+			if (vc > 0) html += QString("<span style=\"color:%1;\">%2</span>").arg(colors[vc % numColors]).arg(sepStr);
+			QTableWidgetItem *hItem = m_view->horizontalHeaderItem(c);
+			QString text = hItem ? hItem->text() : "";
+			if (hItem && hItem->data(WasQuotedRole).toBool()) {
+				text.replace("\"", "\"\"");
+				text = "\"" + text + "\"";
+			}
+			html += QString("<span style=\"color:%1;\">%2</span>").arg(colors[vc % numColors]).arg(text.toHtmlEscaped());
+		}
+		html += "\n";
+	}
+
+	for (int vr = 0; vr < rows; ++vr) {
+		int r = m_view->verticalHeader()->logicalIndex(vr);
+		for (int vc = 0; vc < cols; ++vc) {
+			int c = m_view->horizontalHeader()->logicalIndex(vc);
+			if (vc > 0) html += QString("<span style=\"color:%1;\">%2</span>").arg(colors[vc % numColors]).arg(sepStr);
+			QTableWidgetItem *item = m_view->item(r, c);
+			QString text = item ? item->text() : "";
+			if (item && item->data(WasQuotedRole).toBool()) {
+				text.replace("\"", "\"\"");
+				text = "\"" + text + "\"";
+			}
+			html += QString("<span style=\"color:%1;\">%2</span>").arg(colors[vc % numColors]).arg(text.toHtmlEscaped());
+		}
+		html += "\n";
+	}
+	html += "</pre>";
+	m_textBrowser->setHtml(html);
+}
+
+void CsvViewerWidget::onSortByColumn(int column) {
+	if (column != m_lastSortColumn) {
+		// First click on a new column: just remember it, don't sort
+		m_lastSortColumn = column;
+		m_lastSortOrder = Qt::AscendingOrder;
+		m_view->horizontalHeader()->setSortIndicator(-1, Qt::AscendingOrder);
+		return;
+	}
+
+	// Second+ click on same column: sort
+	QList<QStringList> beforeData;
+	for (int r = 0; r < m_view->rowCount(); ++r) {
+		QStringList row;
+		for (int c = 0; c < m_view->columnCount(); ++c)
+			row << (m_view->item(r, c) ? m_view->item(r, c)->text() : "");
+		beforeData << row;
+	}
+
+	Qt::SortOrder order = m_lastSortOrder;
+
+	m_view->blockSignals(true);
+	m_view->sortItems(column, order);
+	m_view->blockSignals(false);
+
+	QList<QStringList> afterData;
+	for (int r = 0; r < m_view->rowCount(); ++r) {
+		QStringList row;
+		for (int c = 0; c < m_view->columnCount(); ++c)
+			row << (m_view->item(r, c) ? m_view->item(r, c)->text() : "");
+		afterData << row;
+	}
+
+	m_undoStack->push(new DataSnapshotCommand(m_view, beforeData, afterData, "Sort"));
+	m_view->horizontalHeader()->setSortIndicatorShown(true);
+	m_view->horizontalHeader()->setSortIndicator(column, order);
+
+	// Toggle for next click
+	m_lastSortOrder = (order == Qt::AscendingOrder) ? Qt::DescendingOrder : Qt::AscendingOrder;
+}
+
 bool CsvViewerWidget::eventFilter(QObject *obj, QEvent *event)
 {
-	if (event->type() == QEvent::KeyPress) {
-		auto *ke = static_cast<QKeyEvent*>(event);
-		if (this->isActiveWindow()) {
-			if ((ke->modifiers() & Qt::ControlModifier) && ke->key() == Qt::Key_S) {
-				onSave();
-				return true;
-			}
-			if (!m_activeInput) {
-				if ((ke->modifiers() & Qt::ControlModifier) && ke->key() == Qt::Key_C) {
-					copySelection('\t');
-					return true;
-				}
-				if ((ke->modifiers() & Qt::ControlModifier) && ke->key() == Qt::Key_V) {
-					pasteSelection();
-					return true;
-				}
-				if (ke->key() == Qt::Key_Delete) {
-					deleteSelection();
-					return true;
-				}
-			}
-		}
-	}
+	// --- Determine if our plugin has focus ---
+	bool pluginHasFocus = m_isActive;
 
+	// --- Geometry-based click detection ---
 	if (event->type() == QEvent::MouseButtonPress) {
-		QWidget *w = qobject_cast<QWidget*>(obj);
-		if (w) {
-			if (w != this && !this->isAncestorOf(w)) {
-				m_activeInput = nullptr;
-				restoreFocusToDC();
+		auto *me = static_cast<QMouseEvent*>(event);
+		const QPoint gp = me->globalPosition().toPoint();
+		const QRect gr(mapToGlobal(QPoint(0, 0)), size());
+		if (m_isActive && !gr.contains(gp)) {
+			// Click outside our plugin — deactivate
+			m_isActive = false;
+			m_activeInput = nullptr;
+			if (QWidget *fw = QApplication::focusWidget()) {
+				if (fw == this || this->isAncestorOf(fw))
+					fw->clearFocus();
 			}
+			return false; // let the click through to DC
+		} else if (!m_isActive && gr.contains(gp)) {
+			// Click inside our plugin — activate
+			m_isActive = true;
+			if (m_stackedWidget->currentWidget() == m_view)
+				m_view->setFocus(Qt::MouseFocusReason);
+			else
+				m_textBrowser->setFocus(Qt::MouseFocusReason);
 		}
 	}
 
-	QWidget *w = qobject_cast<QWidget*>(obj);
-	if (w && (w == this || this->isAncestorOf(w))) {
-		if (event->type() == QEvent::FocusIn) {
+	// --- Track FocusIn on our children ---
+	if (event->type() == QEvent::FocusIn) {
+		QWidget *w = qobject_cast<QWidget*>(obj);
+		if (w && (w == this || this->isAncestorOf(w))) {
+			m_isActive = true;
 			if (isInputWidget(w)) {
 				m_activeInput = w;
-				return false;
+				if (QTableWidgetItem *item = m_view->currentItem()) {
+					if (!item->data(Qt::UserRole).isValid()) {
+						m_isProgrammaticChange = true;
+						item->setData(Qt::UserRole, item->text());
+						m_isProgrammaticChange = false;
+					}
+				}
 			}
-			QTimer::singleShot(0, this, [this]() { restoreFocusToDC(); });
-			return false;
 		}
+	}
 
+	// --- Top-level key handling (only when plugin is active) ---
+	if (event->type() == QEvent::KeyPress && pluginHasFocus) {
+		auto *ke = static_cast<QKeyEvent*>(event);
+		// Ctrl+S: Save
+		if ((ke->modifiers() & Qt::ControlModifier) && ke->key() == Qt::Key_S) {
+			onSave();
+			return true;
+		}
+		// Ctrl+Z: Undo (only when not editing)
+		if (!m_activeInput && (ke->modifiers() & Qt::ControlModifier) && !(ke->modifiers() & Qt::ShiftModifier) && ke->key() == Qt::Key_Z) {
+			if (m_undoStack->canUndo()) {
+				m_undoStack->undo();
+				return true;
+			}
+		}
+		// Ctrl+Shift+Z: Redo
+		if (!m_activeInput && (ke->modifiers() & Qt::ControlModifier) && (ke->modifiers() & Qt::ShiftModifier) && ke->key() == Qt::Key_Z) {
+			if (m_undoStack->canRedo()) {
+				m_undoStack->redo();
+				return true;
+			}
+		}
+		// Ctrl+Y: Redo
+		if (!m_activeInput && (ke->modifiers() & Qt::ControlModifier) && ke->key() == Qt::Key_Y) {
+			if (m_undoStack->canRedo()) {
+				m_undoStack->redo();
+				return true;
+			}
+		}
+		if (!m_activeInput && m_stackedWidget->currentWidget() == m_view) {
+			if ((ke->modifiers() & Qt::ControlModifier) && ke->key() == Qt::Key_C) {
+				copySelection('\t');
+				return true;
+			}
+			if ((ke->modifiers() & Qt::ControlModifier) && ke->key() == Qt::Key_V) {
+				pasteSelection();
+				return true;
+			}
+			if (ke->key() == Qt::Key_Delete) {
+				deleteSelection();
+				return true;
+			}
+			// Enter on a selected cell: open editor
+			if (ke->key() == Qt::Key_Return || ke->key() == Qt::Key_Enter) {
+				if (m_view->currentItem()) {
+					m_view->editItem(m_view->currentItem());
+					return true;
+				}
+			}
+			// Arrow key navigation (with right-wrap)
+			if (ke->key() == Qt::Key_Up || ke->key() == Qt::Key_Down ||
+			    ke->key() == Qt::Key_Left || ke->key() == Qt::Key_Right) {
+				int visualCol = m_view->horizontalHeader()->visualIndex(m_view->currentIndex().column());
+				int visualRow = m_view->verticalHeader()->visualIndex(m_view->currentIndex().row());
+				if (ke->key() == Qt::Key_Up) visualRow--;
+				if (ke->key() == Qt::Key_Down) visualRow++;
+				if (ke->key() == Qt::Key_Left) {
+					visualCol--;
+					if (visualCol < 0 && visualRow > 0) {
+						visualCol = m_view->columnCount() - 1;
+						visualRow--;
+					}
+				}
+				if (ke->key() == Qt::Key_Right) {
+					visualCol++;
+					if (visualCol >= m_view->columnCount() && visualRow < m_view->rowCount() - 1) {
+						visualCol = 0;
+						visualRow++;
+					}
+				}
+				visualRow = qBound(0, visualRow, m_view->rowCount() - 1);
+				visualCol = qBound(0, visualCol, m_view->columnCount() - 1);
+				int r = m_view->verticalHeader()->logicalIndex(visualRow);
+				int c = m_view->horizontalHeader()->logicalIndex(visualCol);
+				m_view->setCurrentCell(r, c);
+				return true;
+			}
+		}
+	}
+
+	// --- Header mouse events: drag-to-move vs drag-to-select ---
+	QHeaderView *hHeader = m_view->horizontalHeader();
+	QHeaderView *vHeader = m_view->verticalHeader();
+	if (event->type() == QEvent::MouseButtonPress) {
+		if (obj == hHeader->viewport() || obj == vHeader->viewport()) {
+			QHeaderView *header = (obj == hHeader->viewport()) ? hHeader : vHeader;
+			auto *me = static_cast<QMouseEvent*>(event);
+			int logicalIndex = header->logicalIndexAt(me->pos());
+			if (logicalIndex >= 0 && isSectionSelected(header, logicalIndex)) {
+				header->setSectionsMovable(true);
+				m_isDraggingSection = true;
+				m_dragHeader = header;
+				m_dragLogicalIndex = logicalIndex;
+				m_dragBeforeOrder.clear();
+				for (int v = 0; v < header->count(); ++v)
+					m_dragBeforeOrder.append(header->logicalIndex(v));
+
+				// Save selected sections NOW, before Qt clears the selection
+				bool isHorizontal = (header == m_view->horizontalHeader());
+				m_dragSelectedSections.clear();
+				QModelIndexList sel = m_view->selectionModel()->selectedIndexes();
+				for (const QModelIndex &idx : sel) {
+					int li = isHorizontal ? idx.column() : idx.row();
+					m_dragSelectedSections.insert(li);
+				}
+
+				// Restore the full selection after Qt's default handler clears it
+				QItemSelection savedSel = m_view->selectionModel()->selection();
+				QTimer::singleShot(0, this, [this, savedSel]() {
+					if (m_isDraggingSection)
+						m_view->selectionModel()->select(savedSel, QItemSelectionModel::ClearAndSelect);
+				});
+			} else {
+				header->setSectionsMovable(false);
+			}
+		}
+	}
+
+	// --- Child widget events (header drag handling) ---
+	QWidget *w = qobject_cast<QWidget*>(obj);
+	if (w && (w == this || this->isAncestorOf(w))) {
 		if (event->type() == QEvent::ChildAdded) {
 			auto *ce = static_cast<QChildEvent*>(event);
 			if (auto *childWidget = qobject_cast<QWidget*>(ce->child())) {
@@ -284,18 +1096,75 @@ bool CsvViewerWidget::eventFilter(QObject *obj, QEvent *event)
 			}
 		}
 
-		if (event->type() == QEvent::KeyPress) {
+		if (event->type() == QEvent::KeyPress && m_stackedWidget->currentWidget() == m_view) {
 			auto *ke = static_cast<QKeyEvent*>(event);
-			if (ke->key() == Qt::Key_Escape && m_activeInput) {
-				m_activeInput = nullptr;
-				restoreFocusToDC();
-				return true;
-			}
-			if ((ke->key() == Qt::Key_Return || ke->key() == Qt::Key_Enter) && isInputWidget(w)) {
-				QTimer::singleShot(0, this, [this]() {
+			if (m_activeInput && w != m_textBrowser) {
+				if (ke->key() == Qt::Key_Escape) {
+					if (QTableWidgetItem *item = m_view->currentItem()) {
+						QVariant oldData = item->data(Qt::UserRole);
+						if (oldData.isValid()) {
+							m_isProgrammaticChange = true;
+							item->setText(oldData.toString());
+							item->setData(Qt::UserRole, QVariant());
+							m_isProgrammaticChange = false;
+						}
+					}
 					m_activeInput = nullptr;
 					restoreFocusToDC();
-				});
+					return true;
+				}
+				if (ke->key() == Qt::Key_Up || ke->key() == Qt::Key_Down) {
+					QModelIndex current = m_view->currentIndex();
+					int r = current.row(), c = current.column();
+					if (ke->key() == Qt::Key_Up) r--;
+					if (ke->key() == Qt::Key_Down) r++;
+					r = qBound(0, r, m_view->rowCount() - 1);
+					
+					if (QTableWidgetItem *item = m_view->currentItem()) {
+						QVariant oldData = item->data(Qt::UserRole);
+						if (oldData.isValid()) {
+							m_isProgrammaticChange = true;
+							item->setText(oldData.toString());
+							item->setData(Qt::UserRole, QVariant());
+							m_isProgrammaticChange = false;
+						}
+					}
+					m_view->closePersistentEditor(m_view->currentItem());
+					m_activeInput = nullptr;
+					
+					m_view->setCurrentCell(r, c);
+					m_view->editItem(m_view->item(r, c));
+					return true;
+				}
+				// Left/Right arrows: let them pass through to the cell editor for cursor movement
+				if (ke->key() == Qt::Key_Return || ke->key() == Qt::Key_Enter) {
+					QModelIndex current = m_view->currentIndex();
+					int r = current.row(), c = current.column();
+
+					// Commit the editor data via the delegate
+					QAbstractItemDelegate *delegate = m_view->itemDelegateForIndex(current);
+					if (delegate && m_activeInput) {
+						delegate->setModelData(m_activeInput, m_view->model(), current);
+					}
+					m_activeInput = nullptr;
+
+					// Navigate to next cell (right, wrap to next row)
+					int visualCol = m_view->horizontalHeader()->visualIndex(c);
+					int visualRow = m_view->verticalHeader()->visualIndex(r);
+					visualCol++;
+					if (visualCol >= m_view->columnCount()) {
+						visualCol = 0;
+						visualRow++;
+					}
+					if (visualRow < m_view->rowCount()) {
+						int nr = m_view->verticalHeader()->logicalIndex(visualRow);
+						int nc = m_view->horizontalHeader()->logicalIndex(visualCol);
+						QTimer::singleShot(0, this, [this, nr, nc]() {
+							m_view->setCurrentCell(nr, nc);
+						});
+					}
+					return true;
+				}
 			}
 		}
 	}
@@ -305,6 +1174,7 @@ bool CsvViewerWidget::eventFilter(QObject *obj, QEvent *event)
 
 bool CsvViewerWidget::loadFile(const QString& filePath)
 {
+	m_isProgrammaticChange = true;
 	QWidget *fw = QApplication::focusWidget();
 	if (fw && fw != this && !this->isAncestorOf(fw)) {
 		m_savedFocusWidget = fw;
@@ -361,7 +1231,8 @@ bool CsvViewerWidget::loadFile(const QString& filePath)
 	{
 		m_separator = seps.at(i);
 
-		header = parse_line(line, m_encoding, m_separator);
+		QList<bool> headerQuoted;
+		header = parse_line(line, m_encoding, m_separator, &headerQuoted);
 		columns = header.size();
 
 		if (columns > 1)
@@ -369,8 +1240,11 @@ bool CsvViewerWidget::loadFile(const QString& filePath)
 			m_view->setColumnCount(columns);
 			if (m_firstLineAsHeader)
 			{
-				for (int c = 0; c < columns; ++c)
-					m_view->setHorizontalHeaderItem(c, new QTableWidgetItem(header.at(c).trimmed()));
+				for (int c = 0; c < columns; ++c) {
+					QTableWidgetItem *hItem = new QTableWidgetItem(header.at(c).trimmed());
+					hItem->setData(WasQuotedRole, c < headerQuoted.size() && headerQuoted[c]);
+					m_view->setHorizontalHeaderItem(c, hItem);
+				}
 			}
 			detected = true;
 			break;
@@ -384,32 +1258,87 @@ bool CsvViewerWidget::loadFile(const QString& filePath)
 		else
 			m_separator = ',';
 
-		header = parse_line(line, m_encoding, m_separator);
+		QList<bool> headerQuoted;
+		header = parse_line(line, m_encoding, m_separator, &headerQuoted);
 		columns = header.size();
 		m_view->setColumnCount(columns);
 		if (m_firstLineAsHeader)
 		{
-			for (int c = 0; c < columns; ++c)
-				m_view->setHorizontalHeaderItem(c, new QTableWidgetItem(header.at(c).trimmed()));
+			for (int c = 0; c < columns; ++c) {
+				QTableWidgetItem *hItem = new QTableWidgetItem(header.at(c).trimmed());
+				hItem->setData(WasQuotedRole, c < headerQuoted.size() && headerQuoted[c]);
+				m_view->setHorizontalHeaderItem(c, hItem);
+			}
 		}
 	}
 
 	if (columns < 1)
 	{
+		m_isProgrammaticChange = false;
 		return false;
 	}
 
-	if (gResize)
-		m_view->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+	// Check for extension/separator mismatch
+	bool isTsvExt = filePath.endsWith(".tsv", Qt::CaseInsensitive);
+	bool isCsvExt = filePath.endsWith(".csv", Qt::CaseInsensitive);
+	if ((isCsvExt && m_separator == '\t') || (isTsvExt && m_separator == ',')) {
+		QString msg = isCsvExt
+			? "This .csv file appears to use tab separators instead of commas."
+			: "This .tsv file appears to use comma separators instead of tabs.";
+		QMessageBox box(QMessageBox::Warning, "Separator Mismatch", msg, QMessageBox::NoButton, this);
+		QPushButton *btnIgnore = box.addButton("Ignore", QMessageBox::RejectRole);
+		QPushButton *btnFixSep = box.addButton("Fix Separator", QMessageBox::AcceptRole);
+		QPushButton *btnRename = box.addButton("Rename Extension", QMessageBox::AcceptRole);
+		box.exec();
+
+		if (box.clickedButton() == btnFixSep) {
+			// Replace separator in the raw file, respecting quoted fields
+			char oldSep = m_separator;
+			char newSep = isCsvExt ? ',' : '\t';
+			m_separator = newSep;
+
+			file.seek(0);
+			QByteArray rawData = file.readAll();
+			file.close();
+
+			// Walk through bytes, toggle inQuote on '"', replace oldSep with newSep only outside quotes
+			bool inQuote = false;
+			for (int i = 0; i < rawData.size(); ++i) {
+				char ch = rawData[i];
+				if (ch == '"') {
+					inQuote = !inQuote;
+				} else if (!inQuote && ch == oldSep) {
+					rawData[i] = newSep;
+				}
+			}
+
+			QFile outFile(m_currentFile);
+			if (outFile.open(QFile::WriteOnly | QFile::Truncate)) {
+				outFile.write(rawData);
+				outFile.close();
+			}
+		} else if (box.clickedButton() == btnRename) {
+			QString newExt = isCsvExt ? ".tsv" : ".csv";
+			QString newPath = filePath;
+			int dotPos = newPath.lastIndexOf('.');
+			if (dotPos >= 0) newPath = newPath.left(dotPos) + newExt;
+			QFile::rename(filePath, newPath);
+			m_currentFile = newPath;
+		}
+		(void)btnIgnore;
+	}
 
 	if (!m_firstLineAsHeader)
 	{
+		QList<bool> headerQuoted;
+		header = parse_line(line, m_encoding, m_separator, &headerQuoted);
 		m_view->insertRow(row);
 		for (int c = 0; c < header.size(); ++c)
 		{
 			QTableWidgetItem *item = new QTableWidgetItem(header.at(c).trimmed());
 			item->setToolTip(header.at(c).trimmed());
 			item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsEditable);
+			item->setData(WasQuotedRole, c < headerQuoted.size() && headerQuoted[c]);
 			m_view->setItem(row, c, item);
 		}
 		row++;
@@ -418,7 +1347,8 @@ bool CsvViewerWidget::loadFile(const QString& filePath)
 	while (!file.atEnd())
 	{
 		m_view->insertRow(row);
-		list = parse_line(file.readLine(), m_encoding, m_separator);
+		QList<bool> rowQuoted;
+		list = parse_line(file.readLine(), m_encoding, m_separator, &rowQuoted);
 
 		if (list.size() > columns)
 		{
@@ -431,6 +1361,7 @@ bool CsvViewerWidget::loadFile(const QString& filePath)
 			QTableWidgetItem *item = new QTableWidgetItem(list.at(c).trimmed());
 			item->setToolTip(list.at(c).trimmed());
 			item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsEditable);
+			item->setData(WasQuotedRole, c < rowQuoted.size() && rowQuoted[c]);
 			m_view->setItem(row, c, item);
 		}
 
@@ -439,8 +1370,15 @@ bool CsvViewerWidget::loadFile(const QString& filePath)
 
 	file.close();
 
-	m_view->setSortingEnabled(true);
 	m_view->setShowGrid(gGrid);
+
+	if (gResize)
+		m_view->resizeColumnsToContents();
+
+	m_lastSortColumn = -1;
+	m_lastSortOrder = Qt::AscendingOrder;
+	m_undoStack->clear();
+	m_isProgrammaticChange = false;
 
 	QTimer::singleShot(0, this, [this]() { restoreFocusToDC(); });
 	return true;
@@ -449,7 +1387,6 @@ bool CsvViewerWidget::loadFile(const QString& filePath)
 void CsvViewerWidget::onSave()
 {
 	if (m_activeInput) {
-		// Commit any active cell edit without touching DC focus
 		if (QWidget *fw = QApplication::focusWidget()) {
 			if (m_view->isAncestorOf(fw))
 				fw->clearFocus();
@@ -457,13 +1394,29 @@ void CsvViewerWidget::onSave()
 		m_activeInput = nullptr;
 	}
 	saveFile(m_currentFile);
+	m_undoStack->setClean();
 }
 
 void CsvViewerWidget::onSaveAs()
 {
-	QString path = QFileDialog::getSaveFileName(this, "Save CSV As", m_currentFile);
+	QString csvFilter = "CSV - Comma Separated (*.csv)";
+	QString tsvFilter = "TSV - Tab Separated (*.tsv)";
+	QString selectedFilter;
+	// Put the current format first
+	QString filter = (m_separator == '\t') ? (tsvFilter + ";;" + csvFilter) : (csvFilter + ";;" + tsvFilter);
+	QString path = QFileDialog::getSaveFileName(this, "Save As", m_currentFile, filter, &selectedFilter);
 	if (!path.isEmpty()) {
+		// Convert separator if the user chose a different format
+		char oldSep = m_separator;
+		if (selectedFilter == csvFilter)
+			m_separator = ',';
+		else if (selectedFilter == tsvFilter)
+			m_separator = '\t';
 		saveFile(path);
+		m_currentFile = path;
+		m_undoStack->setClean();
+		if (m_separator != oldSep)
+			updateTextView();
 	}
 }
 
@@ -492,9 +1445,12 @@ void CsvViewerWidget::saveFile(const QString& filePath)
 
 	QStringList headerLine;
 	if (m_firstLineAsHeader) {
-		for (int c = 0; c < cols; ++c) {
-			QString text = m_view->horizontalHeaderItem(c) ? m_view->horizontalHeaderItem(c)->text() : "";
-			if (text.contains(m_separator) || text.contains('"') || text.contains('\n')) {
+		for (int vc = 0; vc < cols; ++vc) {
+			int c = m_view->horizontalHeader()->logicalIndex(vc);
+			QTableWidgetItem *hItem = m_view->horizontalHeaderItem(c);
+			QString text = hItem ? hItem->text() : "";
+			bool wasQuoted = hItem && hItem->data(WasQuotedRole).toBool();
+			if (wasQuoted || text.contains(m_separator)) {
 				text.replace("\"", "\"\"");
 				text = "\"" + text + "\"";
 			}
@@ -503,11 +1459,15 @@ void CsvViewerWidget::saveFile(const QString& filePath)
 		outText += headerLine.join(m_separator) + "\n";
 	}
 
-	for (int r = 0; r < rows; ++r) {
+	for (int vr = 0; vr < rows; ++vr) {
+		int r = m_view->verticalHeader()->logicalIndex(vr);
 		QStringList rowLine;
-		for (int c = 0; c < cols; ++c) {
-			QString text = m_view->item(r, c) ? m_view->item(r, c)->text() : "";
-			if (text.contains(m_separator) || text.contains('"') || text.contains('\n')) {
+		for (int vc = 0; vc < cols; ++vc) {
+			int c = m_view->horizontalHeader()->logicalIndex(vc);
+			QTableWidgetItem *item = m_view->item(r, c);
+			QString text = item ? item->text() : "";
+			bool wasQuoted = item && item->data(WasQuotedRole).toBool();
+			if (wasQuoted || text.contains(m_separator)) {
 				text.replace("\"", "\"\"");
 				text = "\"" + text + "\"";
 			}
@@ -550,19 +1510,202 @@ QString CsvViewerWidget::getSelectionAsText(char separator)
 	QModelIndexList sel = m_view->selectionModel()->selectedIndexes();
 	if (sel.isEmpty()) return QString();
 
-	int minRow = m_view->rowCount();
-	int maxRow = -1;
-	int minCol = m_view->columnCount();
-	int maxCol = -1;
+	// Find visual bounds of selection
+	int minVRow = m_view->rowCount(), maxVRow = -1;
+	int minVCol = m_view->columnCount(), maxVCol = -1;
 	for (const QModelIndex &index : sel) {
-		int r = index.row();
-		int c = index.column();
-		if (r < minRow) minRow = r;
-		if (r > maxRow) maxRow = r;
-		if (c < minCol) minCol = c;
-		if (c > maxCol) maxCol = c;
+		int vr = m_view->verticalHeader()->visualIndex(index.row());
+		int vc = m_view->horizontalHeader()->visualIndex(index.column());
+		if (vr < minVRow) minVRow = vr;
+		if (vr > maxVRow) maxVRow = vr;
+		if (vc < minVCol) minVCol = vc;
+		if (vc > maxVCol) maxVCol = vc;
 	}
 
+	QString outText;
+	if (m_firstLineAsHeader) {
+		QStringList headerItems;
+		for (int vc = minVCol; vc <= maxVCol; ++vc) {
+			int c = m_view->horizontalHeader()->logicalIndex(vc);
+			QTableWidgetItem *hItem = m_view->horizontalHeaderItem(c);
+			QString headerText = hItem ? hItem->text() : "";
+			bool wasQuoted = hItem && hItem->data(WasQuotedRole).toBool();
+			if (wasQuoted || headerText.contains(separator)) {
+				headerText.replace("\"", "\"\"");
+				headerText = "\"" + headerText + "\"";
+			}
+			headerItems << headerText;
+		}
+		outText += headerItems.join(separator) + "\n";
+	}
+
+	for (int vr = minVRow; vr <= maxVRow; ++vr) {
+		int r = m_view->verticalHeader()->logicalIndex(vr);
+		QStringList rowItems;
+		for (int vc = minVCol; vc <= maxVCol; ++vc) {
+			int c = m_view->horizontalHeader()->logicalIndex(vc);
+			QString cellText = "";
+			QTableWidgetItem *item = nullptr;
+			QModelIndex idx = m_view->model()->index(r, c);
+			if (m_view->selectionModel()->isSelected(idx)) {
+				item = m_view->item(r, c);
+				cellText = item ? item->text() : "";
+			}
+			bool wasQuoted = item && item->data(WasQuotedRole).toBool();
+			if (wasQuoted || cellText.contains(separator)) {
+				cellText.replace("\"", "\"\"");
+				cellText = "\"" + cellText + "\"";
+			}
+			rowItems << cellText;
+		}
+		outText += rowItems.join(separator) + "\n";
+	}
+	return outText;
+}
+
+void CsvViewerWidget::pasteSelection()
+{
+	// Find the target VISUAL row position for the paste
+	int targetVisualRow = m_view->rowCount();
+	QModelIndexList sel = m_view->selectionModel()->selectedIndexes();
+	if (!sel.isEmpty()) {
+		int minVRow = m_view->rowCount();
+		for (const QModelIndex &index : sel) {
+			int vr = m_view->verticalHeader()->visualIndex(index.row());
+			if (vr < minVRow) minVRow = vr;
+		}
+		targetVisualRow = minVRow;
+	}
+
+	int endRow = m_view->rowCount();
+	bool needsMove = (targetVisualRow < endRow);
+
+	// Capture header order before paste (for undo of visual move)
+	QList<int> beforeOrder;
+	QHeaderView *vh = m_view->verticalHeader();
+	if (needsMove) {
+		for (int v = 0; v < vh->count(); ++v)
+			beforeOrder.append(vh->logicalIndex(v));
+	}
+
+	// Insert at end, then move to the visual target
+	if (needsMove) m_undoStack->beginMacro("Paste rows");
+
+	pasteSelectionAt(endRow);
+
+	int rowsInserted = m_view->rowCount() - endRow;
+	if (rowsInserted > 0 && needsMove) {
+		// Capture order after insertion (new rows at end)
+		QList<int> midOrder;
+		for (int v = 0; v < vh->count(); ++v)
+			midOrder.append(vh->logicalIndex(v));
+
+		// Move new rows from end to target visual position
+		for (int i = 0; i < rowsInserted; ++i) {
+			int logicalRow = endRow + i;
+			int curVisual = vh->visualIndex(logicalRow);
+			vh->moveSection(curVisual, targetVisualRow + i);
+		}
+
+		QList<int> afterOrder;
+		for (int v = 0; v < vh->count(); ++v)
+			afterOrder.append(vh->logicalIndex(v));
+
+		m_undoStack->push(new SectionMoveCommand(vh, midOrder, afterOrder, "Move pasted rows"));
+		updateRowNumbers();
+	}
+
+	if (needsMove) m_undoStack->endMacro();
+}
+
+void CsvViewerWidget::pasteSelectionAt(int atRow)
+{
+	int targetCols = m_view->columnCount();
+	if (targetCols <= 0) return;
+
+	QString text = QApplication::clipboard()->text();
+	if (text.isEmpty()) return;
+
+	QStringList lines = text.split(QRegularExpression("\r?\n"));
+	if (!lines.isEmpty() && lines.last().isEmpty()) lines.removeLast();
+	if (lines.isEmpty()) return;
+
+	char sep = '\t';
+	QStringList testList = parse_line(lines.first().toUtf8(), m_encoding, '\t');
+	if (testList.size() != targetCols && m_separator != '\t') {
+		testList = parse_line(lines.first().toUtf8(), m_encoding, m_separator);
+		if (testList.size() == targetCols) sep = m_separator;
+		else return;
+	} else if (testList.size() != targetCols) return;
+
+	if (m_firstLineAsHeader && !lines.isEmpty()) {
+		QStringList firstLine = parse_line(lines.first().toUtf8(), m_encoding, sep);
+		bool matchesHeader = (firstLine.size() == targetCols);
+		for (int c = 0; c < targetCols && matchesHeader; ++c) {
+			QString headerText = m_view->horizontalHeaderItem(c) ? m_view->horizontalHeaderItem(c)->text() : "";
+			if (firstLine.at(c).trimmed() != headerText) matchesHeader = false;
+		}
+		if (matchesHeader) lines.removeFirst();
+	}
+	if (lines.isEmpty()) return;
+
+	int rowsToInsert = lines.size();
+	RowColCommand *cmd = new RowColCommand(m_view, atRow, rowsToInsert, true, true);
+	
+	m_isProgrammaticChange = true;
+	m_undoStack->push(cmd);
+	m_isProgrammaticChange = false;
+	
+	for (int i = 0; i < rowsToInsert; ++i) {
+		QList<bool> wasQuoted;
+		QStringList list = parse_line(lines.at(i).toUtf8(), m_encoding, sep, &wasQuoted);
+		// Map clipboard fields (in visual column order) to logical columns
+		for (int vc = 0; vc < targetCols; ++vc) {
+			int c = m_view->horizontalHeader()->logicalIndex(vc);
+			QString cellText = vc < list.size() ? list.at(vc).trimmed() : "";
+			if (QTableWidgetItem *item = m_view->item(atRow + i, c)) {
+				m_isProgrammaticChange = true;
+				item->setText(cellText);
+				item->setData(WasQuotedRole, vc < wasQuoted.size() && wasQuoted[vc]);
+				m_isProgrammaticChange = false;
+			}
+		}
+	}
+}
+
+void CsvViewerWidget::insertEmptyRows(int count, int atRow)
+{
+	if (m_view->columnCount() <= 0 || count <= 0) return;
+	m_undoStack->push(new RowColCommand(m_view, atRow, count, true, true));
+}
+
+void CsvViewerWidget::deleteSelection()
+{
+	QModelIndexList sel = m_view->selectionModel()->selectedIndexes();
+	if (sel.isEmpty()) return;
+	
+	QSet<int> rowsSet;
+	for (const QModelIndex &index : sel) rowsSet.insert(index.row());
+	QList<int> rowsToDelete = rowsSet.values();
+	std::sort(rowsToDelete.begin(), rowsToDelete.end(), std::greater<int>());
+
+	m_undoStack->beginMacro("Delete rows");
+	for (int r : rowsToDelete) {
+		m_undoStack->push(new RowColCommand(m_view, r, 1, true, false));
+	}
+	m_undoStack->endMacro();
+}
+
+void CsvViewerWidget::copyColumnSelection(char separator) {
+	QModelIndexList sel = m_view->selectionModel()->selectedIndexes();
+	if (sel.isEmpty()) return;
+	
+	int minCol = m_view->columnCount(), maxCol = -1;
+	for (const QModelIndex &index : sel) {
+		if (index.column() < minCol) minCol = index.column();
+		if (index.column() > maxCol) maxCol = index.column();
+	}
+	
 	QString outText;
 	if (m_firstLineAsHeader) {
 		QStringList headerItems;
@@ -576,15 +1719,11 @@ QString CsvViewerWidget::getSelectionAsText(char separator)
 		}
 		outText += headerItems.join(separator) + "\n";
 	}
-
-	for (int r = minRow; r <= maxRow; ++r) {
+	
+	for (int r = 0; r < m_view->rowCount(); ++r) {
 		QStringList rowItems;
 		for (int c = minCol; c <= maxCol; ++c) {
-			QString cellText = "";
-			QModelIndex idx = m_view->model()->index(r, c);
-			if (m_view->selectionModel()->isSelected(idx)) {
-				cellText = m_view->item(r, c) ? m_view->item(r, c)->text() : "";
-			}
+			QString cellText = m_view->item(r, c) ? m_view->item(r, c)->text() : "";
 			if (cellText.contains(separator) || cellText.contains('"') || cellText.contains('\n')) {
 				cellText.replace("\"", "\"\"");
 				cellText = "\"" + cellText + "\"";
@@ -593,113 +1732,79 @@ QString CsvViewerWidget::getSelectionAsText(char separator)
 		}
 		outText += rowItems.join(separator) + "\n";
 	}
-	return outText;
+	QApplication::clipboard()->setText(outText);
 }
 
-void CsvViewerWidget::pasteSelection()
-{
-	int insertRowIdx = m_view->rowCount();
-	QModelIndexList sel = m_view->selectionModel()->selectedIndexes();
-	if (!sel.isEmpty()) {
-		int minRow = m_view->rowCount();
-		for (const QModelIndex &index : sel) {
-			if (index.row() < minRow) {
-				minRow = index.row();
-			}
-		}
-		insertRowIdx = minRow;
-	}
-	pasteSelectionAt(insertRowIdx);
-}
-
-void CsvViewerWidget::pasteSelectionAt(int atRow)
-{
-	int targetCols = m_view->columnCount();
-	if (targetCols <= 0) return;
-
+void CsvViewerWidget::pasteColumnSelectionAt(int atCol) {
 	QString text = QApplication::clipboard()->text();
 	if (text.isEmpty()) return;
-
-	// Split by newlines
+	
 	QStringList lines = text.split(QRegularExpression("\r?\n"));
-	if (!lines.isEmpty() && lines.last().isEmpty()) {
-		lines.removeLast();
-	}
+	if (!lines.isEmpty() && lines.last().isEmpty()) lines.removeLast();
 	if (lines.isEmpty()) return;
 
-	// Try tab first, then current separator
+	int expectedRows = m_view->rowCount();
+	if (m_firstLineAsHeader) expectedRows += 1;
+	
+	if (lines.size() != expectedRows) {
+		QMessageBox::warning(this, "Paste Error", QString("Clipboard contains %1 rows, but table requires %2.").arg(lines.size()).arg(expectedRows));
+		return;
+	}
+
 	char sep = '\t';
-	QStringList testList = parse_line(lines.first().toUtf8(), m_encoding, '\t');
-	if (testList.size() != targetCols && m_separator != '\t') {
-		testList = parse_line(lines.first().toUtf8(), m_encoding, m_separator);
-		if (testList.size() == targetCols) {
-			sep = m_separator;
-		} else {
-			return; // Column count mismatch
-		}
-	} else if (testList.size() != targetCols) {
-		return; // Column count mismatch
+	int colsToInsert = parse_line(lines.first().toUtf8(), m_encoding, '\t').size();
+	if (colsToInsert <= 1 && m_separator != '\t') {
+		sep = m_separator;
+		colsToInsert = parse_line(lines.first().toUtf8(), m_encoding, m_separator).size();
 	}
-
-	// If treating first line as header, skip the clipboard's first line when it matches the header
-	if (m_firstLineAsHeader && !lines.isEmpty()) {
-		QStringList firstLine = parse_line(lines.first().toUtf8(), m_encoding, sep);
-		bool matchesHeader = (firstLine.size() == targetCols);
-		for (int c = 0; c < targetCols && matchesHeader; ++c) {
-			QString headerText = m_view->horizontalHeaderItem(c) ? m_view->horizontalHeaderItem(c)->text() : "";
-			if (firstLine.at(c).trimmed() != headerText)
-				matchesHeader = false;
-		}
-		if (matchesHeader)
-			lines.removeFirst();
-	}
-	if (lines.isEmpty()) return;
-
-	int rowsToInsert = lines.size();
-	for (int i = 0; i < rowsToInsert; ++i) {
-		m_view->insertRow(atRow + i);
-		QStringList list = parse_line(lines.at(i).toUtf8(), m_encoding, sep);
-		for (int c = 0; c < targetCols; ++c) {
+	
+	m_isProgrammaticChange = true;
+	m_undoStack->push(new RowColCommand(m_view, atCol, colsToInsert, false, true));
+	m_isProgrammaticChange = false;
+	
+	int startIdx = 0;
+	if (m_firstLineAsHeader) {
+		QStringList list = parse_line(lines.at(0).toUtf8(), m_encoding, sep);
+		for (int c = 0; c < colsToInsert; ++c) {
 			QString cellText = c < list.size() ? list.at(c).trimmed() : "";
-			QTableWidgetItem *item = new QTableWidgetItem(cellText);
-			item->setToolTip(cellText);
-			item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsEditable);
-			m_view->setItem(atRow + i, c, item);
+			if (QTableWidgetItem *item = m_view->horizontalHeaderItem(atCol + c)) item->setText(cellText);
+			else m_view->setHorizontalHeaderItem(atCol + c, new QTableWidgetItem(cellText));
+		}
+		startIdx = 1;
+	}
+	
+	for (int r = 0; r < m_view->rowCount(); ++r) {
+		QStringList list = parse_line(lines.at(startIdx + r).toUtf8(), m_encoding, sep);
+		for (int c = 0; c < colsToInsert; ++c) {
+			QString cellText = c < list.size() ? list.at(c).trimmed() : "";
+			if (QTableWidgetItem *item = m_view->item(r, atCol + c)) {
+				m_isProgrammaticChange = true;
+				item->setText(cellText);
+				m_isProgrammaticChange = false;
+			}
 		}
 	}
 }
 
-void CsvViewerWidget::insertEmptyRows(int count, int atRow)
-{
-	int targetCols = m_view->columnCount();
-	if (targetCols <= 0 || count <= 0) return;
-
-	for (int i = 0; i < count; ++i) {
-		m_view->insertRow(atRow + i);
-		for (int c = 0; c < targetCols; ++c) {
-			QTableWidgetItem *item = new QTableWidgetItem("");
-			item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsEditable);
-			m_view->setItem(atRow + i, c, item);
-		}
-	}
+void CsvViewerWidget::insertEmptyColumns(int count, int atCol) {
+	if (m_view->rowCount() <= 0 || count <= 0) return;
+	m_undoStack->push(new RowColCommand(m_view, atCol, count, false, true));
 }
 
-void CsvViewerWidget::deleteSelection()
-{
+void CsvViewerWidget::deleteColumnSelection() {
 	QModelIndexList sel = m_view->selectionModel()->selectedIndexes();
 	if (sel.isEmpty()) return;
+	
+	QSet<int> colsSet;
+	for (const QModelIndex &index : sel) colsSet.insert(index.column());
+	QList<int> colsToDelete = colsSet.values();
+	std::sort(colsToDelete.begin(), colsToDelete.end(), std::greater<int>());
 
-	QSet<int> rowsToDeleteSet;
-	for (const QModelIndex &index : sel) {
-		rowsToDeleteSet.insert(index.row());
+	m_undoStack->beginMacro("Delete cols");
+	for (int c : colsToDelete) {
+		m_undoStack->push(new RowColCommand(m_view, c, 1, false, false));
 	}
-
-	QList<int> rowsToDelete = rowsToDeleteSet.values();
-	std::sort(rowsToDelete.begin(), rowsToDelete.end(), std::greater<int>());
-
-	for (int r : rowsToDelete) {
-		m_view->removeRow(r);
-	}
+	m_undoStack->endMacro();
 }
 
 void CsvViewerWidget::showContextMenu(const QPoint &pos)
@@ -757,35 +1862,81 @@ void CsvViewerWidget::showContextMenu(const QPoint &pos)
 	QAction *res = menu.exec(m_view->viewport()->mapToGlobal(pos));
 	if (!res) return;
 
-	if (res == actCopyTSV) {
-		copySelection('\t');
-	} else if (res == actCopyCSV) {
-		copySelection(',');
-	} else if (res == actDelete) {
-		deleteSelection();
-	} else if (res == actInsertAbove) {
-		insertEmptyRows(numRows, minRow);
-	} else if (res == actInsertBelow) {
-		insertEmptyRows(numRows, maxRow + 1);
-	} else if (res == actPasteAbove) {
-		pasteSelectionAt(minRow);
-	} else if (res == actPasteBelow) {
-		pasteSelectionAt(maxRow + 1);
+	if (res == actCopyTSV) copySelection('\t');
+	else if (res == actCopyCSV) copySelection(',');
+	else if (res == actDelete) deleteSelection();
+	else if (res == actInsertAbove) insertEmptyRows(numRows, minRow);
+	else if (res == actInsertBelow) insertEmptyRows(numRows, maxRow + 1);
+	else if (res == actPasteAbove) pasteSelectionAt(minRow);
+	else if (res == actPasteBelow) pasteSelectionAt(maxRow + 1);
+}
+
+void CsvViewerWidget::showColumnContextMenu(const QPoint &pos)
+{
+	QMenu menu(this);
+	QAction *actCopy = nullptr;
+	QAction *actDelete = nullptr;
+	QAction *actInsertLeft = nullptr;
+	QAction *actInsertRight = nullptr;
+	QAction *actPasteLeft = nullptr;
+	QAction *actPasteRight = nullptr;
+
+	int minCol = m_view->columnCount();
+	int maxCol = -1;
+	int numCols = 0;
+
+	QModelIndexList sel = m_view->selectionModel()->selectedIndexes();
+	if (!sel.isEmpty()) {
+		QSet<int> cols;
+		for (const QModelIndex &index : sel) {
+			cols.insert(index.column());
+			if (index.column() < minCol) minCol = index.column();
+			if (index.column() > maxCol) maxCol = index.column();
+		}
+		numCols = cols.size();
+		
+		actCopy = menu.addAction("Copy Columns");
+		menu.addSeparator();
+		actDelete = menu.addAction("Delete Selected Columns");
+	} else {
+		int clickedCol = m_view->columnAt(pos.x());
+		if (clickedCol >= 0) {
+			minCol = maxCol = clickedCol;
+			numCols = 1;
+		}
 	}
+
+	if (numCols > 0) {
+		menu.addSeparator();
+		QString colStr = (numCols == 1) ? "1 col" : QString("%1 cols").arg(numCols);
+		actInsertLeft = menu.addAction(QString("Insert %1 left").arg(colStr));
+		actInsertRight = menu.addAction(QString("Insert %1 right").arg(colStr));
+		
+		QString clipboardText = QApplication::clipboard()->text();
+		if (!clipboardText.isEmpty()) {
+			menu.addSeparator();
+			actPasteLeft = menu.addAction("Insert from Clipboard left");
+			actPasteRight = menu.addAction("Insert from Clipboard right");
+		}
+	}
+
+	QAction *res = menu.exec(m_view->horizontalHeader()->viewport()->mapToGlobal(pos));
+	if (!res) return;
+
+	if (res == actCopy) copyColumnSelection('\t');
+	else if (res == actDelete) deleteColumnSelection();
+	else if (res == actInsertLeft) insertEmptyColumns(numCols, minCol);
+	else if (res == actInsertRight) insertEmptyColumns(numCols, maxCol + 1);
+	else if (res == actPasteLeft) pasteColumnSelectionAt(minCol);
+	else if (res == actPasteRight) pasteColumnSelectionAt(maxCol + 1);
 }
 
 
 HANDLE DCPCALL ListLoad(HANDLE ParentWin, char* FileToLoad, int ShowFlags)
 {
-	if (!QApplication::instance())
-		return nullptr;
-
+	if (!QApplication::instance()) return nullptr;
 	CsvViewerWidget *widget = new CsvViewerWidget((QWidget*)ParentWin);
-	if (!widget->loadFile(FileToLoad)) {
-		delete widget;
-		return nullptr;
-	}
-
+	if (!widget->loadFile(FileToLoad)) { delete widget; return nullptr; }
 	widget->show();
 	return widget;
 }
@@ -800,26 +1951,33 @@ int DCPCALL ListSendCommand(HWND ListWin, int Command, int Parameter)
 {
 	CsvViewerWidget *widget = (CsvViewerWidget*)ListWin;
 	QTableWidget *view = widget->view();
-
 	switch (Command)
 	{
 	case lc_copy :
 	{
 		QString text = widget->getSelectionAsText('\t');
-		if (text.isEmpty())
-			return LISTPLUGIN_ERROR;
+		if (text.isEmpty()) return LISTPLUGIN_ERROR;
 		QApplication::clipboard()->setText(text);
 		break;
 	}
-
 	case lc_selectall :
 		view->selectAll();
 		break;
-
+	case lc_focus :
+		if (Parameter) {
+			widget->setActive(true);
+			view->setFocus(Qt::OtherFocusReason);
+		} else {
+			widget->setActive(false);
+			if (QWidget *fw = QApplication::focusWidget()) {
+				if (fw == widget || widget->isAncestorOf(fw))
+					fw->clearFocus();
+			}
+		}
+		break;
 	default :
 		return LISTPLUGIN_ERROR;
 	}
-
 	return LISTPLUGIN_OK;
 }
 
@@ -827,13 +1985,9 @@ int DCPCALL ListSearchText(HWND ListWin, char* SearchString, int SearchParameter
 {
 	CsvViewerWidget *widget = (CsvViewerWidget*)ListWin;
 	QTableWidget *view = widget->view();
-
 	QList<QTableWidgetItem*> list;
-
 	Qt::MatchFlags sflags = Qt::MatchContains;
-
-	if (SearchParameter & lcs_matchcase)
-		sflags |= Qt::MatchCaseSensitive;
+	if (SearchParameter & lcs_matchcase) sflags |= Qt::MatchCaseSensitive;
 
 	QString needle(SearchString);
 	QString prev = view->property("needle").value<QString>();
@@ -844,18 +1998,13 @@ int DCPCALL ListSearchText(HWND ListWin, char* SearchString, int SearchParameter
 	if (!list.isEmpty())
 	{
 		int i = view->property("findit").value<int>();
-
 		if (needle != prev || SearchParameter & lcs_findfirst)
 		{
-			if (SearchParameter & lcs_backwards)
-				i = list.size() - 1;
-			else
-				i = 0;
+			if (SearchParameter & lcs_backwards) i = list.size() - 1;
+			else i = 0;
 		}
-		else if (SearchParameter & lcs_backwards)
-			i--;
-		else
-			i++;
+		else if (SearchParameter & lcs_backwards) i--;
+		else i++;
 
 		if (i >= 0 && i < list.size() && list.at(i))
 		{
@@ -865,9 +2014,7 @@ int DCPCALL ListSearchText(HWND ListWin, char* SearchString, int SearchParameter
 			return LISTPLUGIN_OK;
 		}
 	}
-
 	QMessageBox::information(widget, "", QString::asprintf(_("\"%s\" not found!"), SearchString));
-
 	return LISTPLUGIN_ERROR;
 }
 
@@ -882,15 +2029,11 @@ void DCPCALL ListSetDefaultParams(ListDefaultParamStruct* dps)
 	QString cfgpath = defini.absolutePath() + "/j2969719.ini";
 	QSettings settings(cfgpath, QSettings::IniFormat);
 
-	if (!settings.contains(PLUGNAME "/resize_columns"))
-		settings.setValue(PLUGNAME "/resize_columns", gResize);
-	else
-		gResize = settings.value(PLUGNAME "/resize_columns").toBool();
+	if (!settings.contains(PLUGNAME "/resize_columns")) settings.setValue(PLUGNAME "/resize_columns", gResize);
+	else gResize = settings.value(PLUGNAME "/resize_columns").toBool();
 
-	if (!settings.contains(PLUGNAME "/enca"))
-		settings.setValue(PLUGNAME "/enca", gEnca);
-	else
-		gEnca = settings.value(PLUGNAME "/enca").toBool();
+	if (!settings.contains(PLUGNAME "/enca")) settings.setValue(PLUGNAME "/enca", gEnca);
+	else gEnca = settings.value(PLUGNAME "/enca").toBool();
 
 	if (!settings.contains(PLUGNAME "/enca_lang"))
 	{
@@ -898,23 +2041,16 @@ void DCPCALL ListSetDefaultParams(ListDefaultParamStruct* dps)
 		snprintf(lang, 3, "%s", setlocale(LC_ALL, ""));
 		settings.setValue(PLUGNAME "/enca_lang", QString(lang));
 	}
-	else
-		gLang = settings.value(PLUGNAME "/enca_lang").toString();
+	else gLang = settings.value(PLUGNAME "/enca_lang").toString();
 
-	if (!settings.contains(PLUGNAME "/enca_readall"))
-		settings.setValue(PLUGNAME "/enca_readall", gReadAll);
-	else
-		gReadAll = settings.value(PLUGNAME "/enca_readall").toBool();
+	if (!settings.contains(PLUGNAME "/enca_readall")) settings.setValue(PLUGNAME "/enca_readall", gReadAll);
+	else gReadAll = settings.value(PLUGNAME "/enca_readall").toBool();
 
-	if (!settings.contains(PLUGNAME "/doublequoted"))
-		settings.setValue(PLUGNAME "/doublequoted", gQuoted);
-	else
-		gQuoted = settings.value(PLUGNAME "/doublequoted").toBool();
+	if (!settings.contains(PLUGNAME "/doublequoted")) settings.setValue(PLUGNAME "/doublequoted", gQuoted);
+	else gQuoted = settings.value(PLUGNAME "/doublequoted").toBool();
 
-	if (!settings.contains(PLUGNAME "/draw_grid"))
-		settings.setValue(PLUGNAME "/draw_grid", gGrid);
-	else
-		gGrid = settings.value(PLUGNAME "/draw_grid").toBool();
+	if (!settings.contains(PLUGNAME "/draw_grid")) settings.setValue(PLUGNAME "/draw_grid", gGrid);
+	else gGrid = settings.value(PLUGNAME "/draw_grid").toBool();
 
 	Dl_info dlinfo;
 	static char plg_path[PATH_MAX];
@@ -926,10 +2062,7 @@ void DCPCALL ListSetDefaultParams(ListDefaultParamStruct* dps)
 	{
 		strncpy(plg_path, dlinfo.dli_fname, PATH_MAX);
 		char *pos = strrchr(plg_path, '/');
-
-		if (pos)
-			strcpy(pos + 1, loc_dir);
-
+		if (pos) strcpy(pos + 1, loc_dir);
 		setlocale(LC_ALL, "");
 		bindtextdomain(GETTEXT_PACKAGE, plg_path);
 		textdomain(GETTEXT_PACKAGE);
