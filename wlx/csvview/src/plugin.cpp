@@ -33,12 +33,16 @@
 #include <QPrinter>
 #include <QPrintDialog>
 #include <QPushButton>
+#include <QHBoxLayout>
+#include <QCheckBox>
+#include <QComboBox>
 
 #include <string.h>
 #include <dlfcn.h>
 #include <libintl.h>
 #include <locale.h>
 #include <glib.h>
+#include <algorithm>
 
 #include "wlxplugin.h"
 #include "enca.h"
@@ -396,11 +400,30 @@ private:
 	bool m_isDraggingSection;
 	QTimer *m_moveDebounceTimer;
 	bool m_isActive;
+
+	// Find/Replace Panel & Actions
+	QWidget *m_findReplacePanel;
+	QLineEdit *m_txtFind;
+	QLineEdit *m_txtReplace;
+	QCheckBox *m_chkMatchCase;
+	QCheckBox *m_chkMatchEntire;
+	QCheckBox *m_chkRegex;
+	QComboBox *m_comboScope;
+	QLabel *m_lblStatus;
+	QAction *m_actFindReplace;
+
+	void showFindReplacePanel(bool show);
+	void doFind(bool forward);
+	void doReplace();
+	void doReplaceAll();
+	bool cellMatches(int row, int col, const QString &query, bool matchCase, bool entireCell, bool regexFlag);
 };
 
 CsvViewerWidget::CsvViewerWidget(QWidget *parent)
 	: QWidget(parent), m_savedFocusWidget(nullptr), m_activeInput(nullptr), m_separator(','), m_firstLineAsHeader(true), m_isProgrammaticChange(false),
-	  m_lastSortColumn(-1), m_lastSortOrder(Qt::AscendingOrder), m_dragHeader(nullptr), m_dragLogicalIndex(-1), m_isDraggingSection(false), m_isActive(false)
+	  m_lastSortColumn(-1), m_lastSortOrder(Qt::AscendingOrder), m_dragHeader(nullptr), m_dragLogicalIndex(-1), m_isDraggingSection(false), m_isActive(false),
+	  m_findReplacePanel(nullptr), m_txtFind(nullptr), m_txtReplace(nullptr), m_chkMatchCase(nullptr), m_chkMatchEntire(nullptr), m_chkRegex(nullptr),
+	  m_comboScope(nullptr), m_lblStatus(nullptr), m_actFindReplace(nullptr)
 {
 	memset(m_encoding, 0, sizeof(m_encoding));
 
@@ -454,6 +477,10 @@ CsvViewerWidget::CsvViewerWidget(QWidget *parent)
 	actHeader->setChecked(true);
 	actHeader->setToolTip("Toggle First Line As Header");
 
+	m_actFindReplace = m_toolbar->addAction(QString::fromUtf8("\xf0\x9f\x94\x8d Find/Replace"));
+	m_actFindReplace->setToolTip("Find and Replace (Ctrl+F / Ctrl+R)");
+	m_actFindReplace->setCheckable(true);
+
 	m_actTextMode = m_toolbar->addAction(QString::fromUtf8("\xf0\x9f\x91\x81\xef\xb8\x8e Show Text"));
 	m_actTextMode->setCheckable(true);
 	m_actTextMode->setToolTip("Toggle text view mode");
@@ -503,6 +530,94 @@ CsvViewerWidget::CsvViewerWidget(QWidget *parent)
 	m_stackedWidget->addWidget(m_view);
 	m_stackedWidget->addWidget(m_textBrowser);
 	layout->addWidget(m_stackedWidget);
+
+	// Initialize Find/Replace panel
+	m_findReplacePanel = new QWidget(this);
+	m_findReplacePanel->setVisible(false);
+	m_findReplacePanel->setStyleSheet("QWidget { background-color: palette(window); border-top: 1px solid palette(mid); }");
+
+	QVBoxLayout *panelLayout = new QVBoxLayout(m_findReplacePanel);
+	panelLayout->setContentsMargins(6, 6, 6, 6);
+	panelLayout->setSpacing(6);
+
+	QHBoxLayout *row1 = new QHBoxLayout();
+	row1->setSpacing(6);
+	QHBoxLayout *row2 = new QHBoxLayout();
+	row2->setSpacing(6);
+
+	QLabel *lblFind = new QLabel("Find:", m_findReplacePanel);
+	m_txtFind = new QLineEdit(m_findReplacePanel);
+	m_txtFind->setPlaceholderText("Search query...");
+
+	QLabel *lblReplace = new QLabel("Replace:", m_findReplacePanel);
+	m_txtReplace = new QLineEdit(m_findReplacePanel);
+	m_txtReplace->setPlaceholderText("Replacement text...");
+
+	m_chkMatchCase = new QCheckBox("Match Case", m_findReplacePanel);
+	m_chkMatchEntire = new QCheckBox("Match Entire Cell", m_findReplacePanel);
+	m_chkRegex = new QCheckBox("Regular Expression", m_findReplacePanel);
+
+	m_chkMatchCase->setFocusPolicy(Qt::NoFocus);
+	m_chkMatchEntire->setFocusPolicy(Qt::NoFocus);
+	m_chkRegex->setFocusPolicy(Qt::NoFocus);
+
+	row1->addWidget(lblFind);
+	row1->addWidget(m_txtFind, 1);
+	row1->addWidget(lblReplace);
+	row1->addWidget(m_txtReplace, 1);
+
+	QLabel *lblScope = new QLabel("Scope:", m_findReplacePanel);
+	m_comboScope = new QComboBox(m_findReplacePanel);
+	m_comboScope->addItems({"All Cells", "Selected Cells", "Current Column", "Current Row"});
+	m_comboScope->setFocusPolicy(Qt::NoFocus);
+
+	QPushButton *btnFindPrev = new QPushButton("Find Previous", m_findReplacePanel);
+	QPushButton *btnFindNext = new QPushButton("Find Next", m_findReplacePanel);
+	QPushButton *btnReplace = new QPushButton("Replace", m_findReplacePanel);
+	QPushButton *btnReplaceAll = new QPushButton("Replace All", m_findReplacePanel);
+
+	btnFindPrev->setFocusPolicy(Qt::NoFocus);
+	btnFindNext->setFocusPolicy(Qt::NoFocus);
+	btnReplace->setFocusPolicy(Qt::NoFocus);
+	btnReplaceAll->setFocusPolicy(Qt::NoFocus);
+
+	m_lblStatus = new QLabel(m_findReplacePanel);
+	m_lblStatus->setStyleSheet("color: palette(link); font-weight: bold;");
+
+	QPushButton *btnClose = new QPushButton("✕", m_findReplacePanel);
+	btnClose->setFixedWidth(30);
+	btnClose->setFlat(true);
+	btnClose->setFocusPolicy(Qt::NoFocus);
+
+	row2->addWidget(lblScope);
+	row2->addWidget(m_comboScope);
+	row2->addWidget(m_chkMatchCase);
+	row2->addWidget(m_chkMatchEntire);
+	row2->addWidget(m_chkRegex);
+	row2->addWidget(btnFindPrev);
+	row2->addWidget(btnFindNext);
+	row2->addWidget(btnReplace);
+	row2->addWidget(btnReplaceAll);
+	row2->addWidget(m_lblStatus, 1);
+	row2->addWidget(btnClose);
+
+	panelLayout->addLayout(row1);
+	panelLayout->addLayout(row2);
+
+	layout->addWidget(m_findReplacePanel);
+
+	// Connect Find/Replace signals
+	QObject::connect(m_actFindReplace, &QAction::toggled, this, [this](bool checked) {
+		showFindReplacePanel(checked);
+	});
+	QObject::connect(btnFindNext, &QPushButton::clicked, this, [this]() { doFind(true); });
+	QObject::connect(btnFindPrev, &QPushButton::clicked, this, [this]() { doFind(false); });
+	QObject::connect(btnReplace, &QPushButton::clicked, this, &CsvViewerWidget::doReplace);
+	QObject::connect(btnReplaceAll, &QPushButton::clicked, this, &CsvViewerWidget::doReplaceAll);
+	QObject::connect(btnClose, &QPushButton::clicked, this, [this]() { showFindReplacePanel(false); });
+
+	QObject::connect(m_txtFind, &QLineEdit::returnPressed, this, [this]() { doFind(true); });
+	QObject::connect(m_txtReplace, &QLineEdit::returnPressed, this, &CsvViewerWidget::doReplace);
 
 	QObject::connect(actSave, &QAction::triggered, this, [this]() { onSave(); });
 	QObject::connect(actSaveAs, &QAction::triggered, this, [this]() { onSaveAs(); });
@@ -822,6 +937,7 @@ void CsvViewerWidget::onToggleTextMode(bool checked) {
 			m_view->closePersistentEditor(m_view->currentItem());
 			m_activeInput = nullptr;
 		}
+		showFindReplacePanel(false);
 		updateTextView();
 		m_stackedWidget->setCurrentWidget(m_textBrowser);
 	} else {
@@ -1023,6 +1139,13 @@ bool CsvViewerWidget::eventFilter(QObject *obj, QEvent *event)
 	// --- Top-level key handling (only when plugin is active) ---
 	if (event->type() == QEvent::KeyPress && pluginHasFocus) {
 		auto *ke = static_cast<QKeyEvent*>(event);
+		// Ctrl+F or Ctrl+R: Find/Replace (only in table view)
+		if (m_stackedWidget->currentWidget() == m_view) {
+			if ((ke->modifiers() & Qt::ControlModifier) && (ke->key() == Qt::Key_F || ke->key() == Qt::Key_R)) {
+				showFindReplacePanel(!m_findReplacePanel->isVisible());
+				return true;
+			}
+		}
 		// Ctrl+S: Save
 		if ((ke->modifiers() & Qt::ControlModifier) && ke->key() == Qt::Key_S) {
 			onSave();
@@ -1216,6 +1339,11 @@ bool CsvViewerWidget::eventFilter(QObject *obj, QEvent *event)
 							m_view->setCurrentCell(nr, nc);
 						});
 					}
+					return true;
+				}
+			} else {
+				if (ke->key() == Qt::Key_Escape && m_findReplacePanel->isVisible()) {
+					showFindReplacePanel(false);
 					return true;
 				}
 			}
@@ -1432,6 +1560,8 @@ bool CsvViewerWidget::loadFile(const QString& filePath)
 	m_lastSortOrder = Qt::AscendingOrder;
 	m_undoStack->clear();
 	m_isProgrammaticChange = false;
+
+	if (m_lblStatus) m_lblStatus->clear();
 
 	if (!m_isActive) {
 		QTimer::singleShot(0, this, [this]() { restoreFocusToDC(); });
@@ -2123,5 +2253,306 @@ void DCPCALL ListSetDefaultParams(ListDefaultParamStruct* dps)
 		setlocale(LC_ALL, "");
 		bindtextdomain(GETTEXT_PACKAGE, plg_path);
 		textdomain(GETTEXT_PACKAGE);
+	}
+}
+
+void CsvViewerWidget::showFindReplacePanel(bool show)
+{
+	if (!m_findReplacePanel) return;
+
+	m_findReplacePanel->setVisible(show);
+	if (m_actFindReplace) {
+		m_actFindReplace->blockSignals(true);
+		m_actFindReplace->setChecked(show);
+		m_actFindReplace->blockSignals(false);
+	}
+
+	if (show) {
+		m_txtFind->setFocus(Qt::OtherFocusReason);
+		m_txtFind->selectAll();
+		m_lblStatus->clear();
+	} else {
+		m_lblStatus->clear();
+		restoreViewFocus();
+	}
+}
+
+bool CsvViewerWidget::cellMatches(int row, int col, const QString &query, bool matchCase, bool entireCell, bool regexFlag)
+{
+	if (query.isEmpty()) return false;
+
+	QTableWidgetItem *item = m_view->item(row, col);
+	QString text = item ? item->text() : "";
+
+	if (regexFlag) {
+		QRegularExpression::PatternOptions options = QRegularExpression::NoPatternOption;
+		if (!matchCase) {
+			options |= QRegularExpression::CaseInsensitiveOption;
+		}
+		QRegularExpression re(entireCell ? "^(" + query + ")$" : query, options);
+		if (!re.isValid()) {
+			return false;
+		}
+		return re.match(text).hasMatch();
+	} else {
+		Qt::CaseSensitivity cs = matchCase ? Qt::CaseSensitive : Qt::CaseInsensitive;
+		if (entireCell) {
+			return text.compare(query, cs) == 0;
+		} else {
+			return text.contains(query, cs);
+		}
+	}
+}
+
+void CsvViewerWidget::doFind(bool forward)
+{
+	QString query = m_txtFind->text();
+	if (query.isEmpty()) {
+		m_lblStatus->setText("Search query is empty.");
+		return;
+	}
+
+	bool matchCase = m_chkMatchCase->isChecked();
+	bool entireCell = m_chkMatchEntire->isChecked();
+	bool regexFlag = m_chkRegex->isChecked();
+	QString scope = m_comboScope->currentText();
+
+	int rows = m_view->rowCount();
+	int cols = m_view->columnCount();
+	if (rows == 0 || cols == 0) {
+		m_lblStatus->setText("Grid is empty.");
+		return;
+	}
+
+	QModelIndex current = m_view->currentIndex();
+	int currRow = current.isValid() ? current.row() : (forward ? 0 : rows - 1);
+	int currCol = current.isValid() ? current.column() : (forward ? 0 : cols - 1);
+
+	// Build list of cells in scope
+	QList<QPair<int, int>> cells;
+	if (scope == "All Cells") {
+		int N = rows * cols;
+		int startIdx = currRow * cols + currCol;
+		for (int i = 1; i <= N; ++i) {
+			int idx = forward ? (startIdx + i) % N : (startIdx - i + N) % N;
+			cells.append({idx / cols, idx % cols});
+		}
+	} else if (scope == "Current Column") {
+		int col = currCol;
+		for (int i = 1; i <= rows; ++i) {
+			int r = forward ? (currRow + i) % rows : (currRow - i + rows) % rows;
+			cells.append({r, col});
+		}
+	} else if (scope == "Current Row") {
+		int row = currRow;
+		for (int i = 1; i <= cols; ++i) {
+			int c = forward ? (currCol + i) % cols : (currCol - i + cols) % cols;
+			cells.append({row, c});
+		}
+	} else if (scope == "Selected Cells") {
+		QModelIndexList sel = m_view->selectionModel()->selectedIndexes();
+		if (sel.isEmpty()) {
+			m_lblStatus->setText("No cells selected.");
+			return;
+		}
+		std::sort(sel.begin(), sel.end(), [](const QModelIndex &a, const QModelIndex &b) {
+			if (a.row() != b.row()) return a.row() < b.row();
+			return a.column() < b.column();
+		});
+
+		int selIdx = -1;
+		for (int i = 0; i < sel.size(); ++i) {
+			if (sel[i].row() == currRow && sel[i].column() == currCol) {
+				selIdx = i;
+				break;
+			}
+		}
+
+		int count = sel.size();
+		for (int i = 1; i <= count; ++i) {
+			int idx = forward ? (selIdx + i) % count : (selIdx - i + count) % count;
+			cells.append({sel[idx].row(), sel[idx].column()});
+		}
+	}
+
+	for (const auto &cell : cells) {
+		if (cellMatches(cell.first, cell.second, query, matchCase, entireCell, regexFlag)) {
+			// Found match!
+			m_view->setCurrentCell(cell.first, cell.second);
+			m_view->scrollToItem(m_view->item(cell.first, cell.second));
+			m_lblStatus->setText(QString("Found match at (%1, %2)").arg(cell.first + 1).arg(cell.second + 1));
+			return;
+		}
+	}
+
+	m_lblStatus->setText("No match found.");
+}
+
+void CsvViewerWidget::doReplace()
+{
+	QString query = m_txtFind->text();
+	QString replaceText = m_txtReplace->text();
+	if (query.isEmpty()) {
+		m_lblStatus->setText("Search query is empty.");
+		return;
+	}
+
+	QModelIndex current = m_view->currentIndex();
+	if (!current.isValid()) {
+		doFind(true);
+		return;
+	}
+
+	bool matchCase = m_chkMatchCase->isChecked();
+	bool entireCell = m_chkMatchEntire->isChecked();
+	bool regexFlag = m_chkRegex->isChecked();
+
+	int row = current.row();
+	int col = current.column();
+
+	if (cellMatches(row, col, query, matchCase, entireCell, regexFlag)) {
+		QTableWidgetItem *item = m_view->item(row, col);
+		QString oldText = item ? item->text() : "";
+		QString newText = oldText;
+
+		if (regexFlag) {
+			QRegularExpression::PatternOptions options = QRegularExpression::NoPatternOption;
+			if (!matchCase) {
+				options |= QRegularExpression::CaseInsensitiveOption;
+			}
+			QRegularExpression re(entireCell ? "^(" + query + ")$" : query, options);
+			newText.replace(re, replaceText);
+		} else {
+			Qt::CaseSensitivity cs = matchCase ? Qt::CaseSensitive : Qt::CaseInsensitive;
+			if (entireCell) {
+				newText = replaceText;
+			} else {
+				newText.replace(query, replaceText, cs);
+			}
+		}
+
+		if (newText != oldText) {
+			m_undoStack->push(new EditCellCommand(m_view, row, col, oldText, newText));
+			m_lblStatus->setText(QString("Replaced match at (%1, %2)").arg(row + 1).arg(col + 1));
+		}
+		// Move to the next match
+		doFind(true);
+	} else {
+		// Not a match, find the next one
+		doFind(true);
+	}
+}
+
+void CsvViewerWidget::doReplaceAll()
+{
+	QString query = m_txtFind->text();
+	QString replaceText = m_txtReplace->text();
+	if (query.isEmpty()) {
+		m_lblStatus->setText("Search query is empty.");
+		return;
+	}
+
+	bool matchCase = m_chkMatchCase->isChecked();
+	bool entireCell = m_chkMatchEntire->isChecked();
+	bool regexFlag = m_chkRegex->isChecked();
+	QString scope = m_comboScope->currentText();
+
+	int rows = m_view->rowCount();
+	int cols = m_view->columnCount();
+	if (rows == 0 || cols == 0) {
+		m_lblStatus->setText("Grid is empty.");
+		return;
+	}
+
+	QList<QPair<int, int>> cells;
+	if (scope == "All Cells") {
+		for (int r = 0; r < rows; ++r) {
+			for (int c = 0; c < cols; ++c) {
+				cells.append({r, c});
+			}
+		}
+	} else if (scope == "Current Column") {
+		QModelIndex current = m_view->currentIndex();
+		int col = current.isValid() ? current.column() : 0;
+		for (int r = 0; r < rows; ++r) {
+			cells.append({r, col});
+		}
+	} else if (scope == "Current Row") {
+		QModelIndex current = m_view->currentIndex();
+		int row = current.isValid() ? current.row() : 0;
+		for (int c = 0; c < cols; ++c) {
+			cells.append({row, c});
+		}
+	} else if (scope == "Selected Cells") {
+		QModelIndexList sel = m_view->selectionModel()->selectedIndexes();
+		if (sel.isEmpty()) {
+			m_lblStatus->setText("No cells selected.");
+			return;
+		}
+		std::sort(sel.begin(), sel.end(), [](const QModelIndex &a, const QModelIndex &b) {
+			if (a.row() != b.row()) return a.row() < b.row();
+			return a.column() < b.column();
+		});
+		for (const auto &idx : sel) {
+			cells.append({idx.row(), idx.column()});
+		}
+	}
+
+	struct Replacement {
+		int row;
+		int col;
+		QString oldText;
+		QString newText;
+	};
+	QList<Replacement> replacements;
+
+	QRegularExpression re;
+	if (regexFlag) {
+		QRegularExpression::PatternOptions options = QRegularExpression::NoPatternOption;
+		if (!matchCase) {
+			options |= QRegularExpression::CaseInsensitiveOption;
+		}
+		re.setPattern(entireCell ? "^(" + query + ")$" : query);
+		re.setPatternOptions(options);
+		if (!re.isValid()) {
+			m_lblStatus->setText("Invalid regular expression.");
+			return;
+		}
+	}
+
+	for (const auto &cell : cells) {
+		int r = cell.first;
+		int c = cell.second;
+		if (cellMatches(r, c, query, matchCase, entireCell, regexFlag)) {
+			QTableWidgetItem *item = m_view->item(r, c);
+			QString oldText = item ? item->text() : "";
+			QString newText = oldText;
+
+			if (regexFlag) {
+				newText.replace(re, replaceText);
+			} else {
+				Qt::CaseSensitivity cs = matchCase ? Qt::CaseSensitive : Qt::CaseInsensitive;
+				if (entireCell) {
+					newText = replaceText;
+				} else {
+					newText.replace(query, replaceText, cs);
+				}
+			}
+
+			if (newText != oldText) {
+				replacements.append({r, c, oldText, newText});
+			}
+		}
+	}
+
+	if (!replacements.isEmpty()) {
+		m_undoStack->beginMacro(QString("Replace All: %1 -> %2").arg(query).arg(replaceText));
+		for (const auto &rep : replacements) {
+			m_undoStack->push(new EditCellCommand(m_view, rep.row, rep.col, rep.oldText, rep.newText));
+		}
+		m_undoStack->endMacro();
+		m_lblStatus->setText(QString("Replaced %1 occurrences.").arg(replacements.size()));
+	} else {
+		m_lblStatus->setText("No replacements made.");
 	}
 }
