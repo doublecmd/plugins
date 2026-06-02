@@ -9,10 +9,10 @@ This plugin is a Qt port of the original work by **j2969719**. You can find the 
 ## Screenshots
 
 ### Toolbar and Header Row Toggle
-![Toolbar and Header Row Toggle](csview1.png)
+![Toolbar and Header Row Toggle](csvview1.png)
 
 ### Custom Right-Click Context Menu
-![Custom Right-Click Context Menu](csview2.png)
+![Custom Right-Click Context Menu](csvview2.png)
 
 ---
 
@@ -20,8 +20,15 @@ This plugin is a Qt port of the original work by **j2969719**. You can find the 
 
 - **Spreadsheet Grid View**: Displays CSV/TSV data in an organized grid table (`QTableWidget`) with adjustable row and column headers.
 - **Double-Quote Parsing**: Correctly handles double-quoted fields containing commas, tabs, or newlines, conforming to standard CSV RFC behaviors.
-- **Encoding Auto-Detection**: Utilizes **Enca** (`libenca`) to automatically detect file character set encodings (such as Cyrillic, UTF-8, Latin, etc.) and converts it gracefully with Glib fallbacks.
+- **Encoding Auto-Detection**: Automatically detects file character set encodings (such as Cyrillic, UTF-8, Latin, etc.) using an embedded encoding engine.
 - **Inline Editing**: Modify cell contents directly inside Lister by double-clicking any cell.
+- **Undo / Redo Support**: Full edit history (`Ctrl+Z` / `Ctrl+Y`) for cell editing, row/column operations, reordering, and sorting.
+- **Interactive Column Drag-and-Drop**: Rearrange columns by dragging and dropping headers, with full support for undoing and redoing the rearrangement.
+- **Column Context Menu**: Right-click headers to copy, paste, insert empty columns, or delete column selections.
+- **Row Insertion Options**: Insert empty rows or clipboard content above or below the current selection.
+- **Text / Source View Mode**: Switch between the spreadsheet grid and a raw text preview with word wrap.
+- **Open Externally**: Launch the file in the system's default external application directly from the toolbar.
+- **Smart Focus Management**: Seamlessly yields keyboard and mouse focus to Double Commander when clicking outside the plugin, ensuring file selection changes and arrow-key pane navigation work flawlessly.
 
 ---
 
@@ -47,13 +54,12 @@ Toggling this button automatically reloads and re-parses the file.
 
 ---
 
-### Pasting (Row Insertion)
+### Pasting & Row Insertion
 
-- Press **`Ctrl+V`** (or right-click → **Insert from Clipboard**) to insert rows from the clipboard.
+- **Insert Empty Row**: Right-click → **Insert Empty Row Above** or **Insert Empty Row Below** to add a blank row.
+- **Insert Clipboard Rows**: Press **`Ctrl+V`** (or right-click → **Insert Row from Clipboard Above** or **Insert Row from Clipboard Below**) to insert rows from the clipboard.
 - The clipboard content must be tab-separated (TSV) or match the file's separator, and the **number of columns must match** exactly — otherwise the paste is silently ignored.
-- Rows are inserted **at the selected row**, pushing the selected row and everything below it down.
-- If no row is selected, rows are appended at the end.
-- **Header deduplication**: If **Header Row** is **on** and the first line of the clipboard exactly matches the current column headers, that line is automatically skipped — only the data rows below it are inserted. This means you can copy a selection that includes the header and paste it back without duplicating the header.
+- **Header deduplication**: If **Header Row** is **on** and the first line of the clipboard exactly matches the current column headers, that line is automatically skipped — only the data rows below it are inserted.
 
 ---
 
@@ -61,6 +67,33 @@ Toggling this button automatically reloads and re-parses the file.
 
 - Press **`Delete`** (or right-click → **Delete Selected Rows**) to remove all selected rows from the grid.
 - Multiple non-contiguous rows can be selected and deleted in one operation.
+
+---
+
+### Undo & Redo
+
+- Press **`Ctrl+Z`** to undo the last edit, insertion, deletion, sorting, or column move.
+- Press **`Ctrl+Y`** (or **`Ctrl+Shift+Z`**) to redo an undone action.
+- A **dirty indicator** (`✓` / `●`) on the toolbar shows whether there are unsaved edits in the undo history.
+
+---
+
+### Column Manipulation & Sorting
+
+- **Drag-and-Drop Reordering**: Drag any column header horizontally to reorder columns in the grid.
+- **Sorting**: Click any column header to sort the table data by that column. Click again to toggle between ascending and descending order.
+- **Column Context Menu**: Right-click a column header to access column-specific options:
+  - Copy column selection.
+  - Paste column selection.
+  - Insert empty columns.
+  - Delete selected columns.
+
+---
+
+### Source Text Mode & External Apps
+
+- **Toggle Text Mode**: Click the **Text Mode** button to view the raw, unparsed text content of the file. Toggle **Word Wrap** to wrap lines.
+- **Open Externally**: Click the **Open Externally** button to open the file in the default system editor/application.
 
 ---
 
