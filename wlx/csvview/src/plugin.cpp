@@ -702,24 +702,30 @@ CsvViewerWidget::CsvViewerWidget(QWidget *parent)
 		} else {
 			if (nowInside && !oldInside) {
 				// Focus is entering the plugin programmatically while inactive.
-				// Restore focus to the widget that had it (old), or fallback to DC.
-				if (old) {
-					QPointer<QWidget> pOld(old);
-					QTimer::singleShot(0, this, [this, pOld]() {
-						if (pOld) {
+				// If the focus target is inside the find/replace panel, just activate the plugin and let focus stay.
+				bool isFindReplaceFocus = m_findReplacePanel && now && (now == m_findReplacePanel || m_findReplacePanel->isAncestorOf(now));
+				if (isFindReplaceFocus) {
+					m_isActive = true;
+				} else {
+					// Restore focus to the widget that had it (old), or fallback to DC.
+					if (old) {
+						QPointer<QWidget> pOld(old);
+						QTimer::singleShot(0, this, [this, pOld]() {
+							if (pOld) {
+								QWidget *currentFocus = QApplication::focusWidget();
+								if (currentFocus && (currentFocus == this || this->isAncestorOf(currentFocus))) {
+									pOld->setFocus(Qt::OtherFocusReason);
+								}
+							}
+						});
+					} else {
+						QTimer::singleShot(0, this, [this]() {
 							QWidget *currentFocus = QApplication::focusWidget();
 							if (currentFocus && (currentFocus == this || this->isAncestorOf(currentFocus))) {
-								pOld->setFocus(Qt::OtherFocusReason);
+								restoreFocusToDC();
 							}
-						}
-					});
-				} else {
-					QTimer::singleShot(0, this, [this]() {
-						QWidget *currentFocus = QApplication::focusWidget();
-						if (currentFocus && (currentFocus == this || this->isAncestorOf(currentFocus))) {
-							restoreFocusToDC();
-						}
-					});
+						});
+					}
 				}
 			}
 		}
@@ -807,9 +813,11 @@ CsvViewerWidget::CsvViewerWidget(QWidget *parent)
 		if (w) {
 			w->setFocusPolicy(Qt::NoFocus);
 		}
-		QObject::connect(action, &QAction::triggered, this, [this]() {
-			QTimer::singleShot(0, this, &CsvViewerWidget::restoreViewFocus);
-		});
+		if (action != m_actFindReplace) {
+			QObject::connect(action, &QAction::triggered, this, [this]() {
+				QTimer::singleShot(0, this, &CsvViewerWidget::restoreViewFocus);
+			});
+		}
 	}
 }
 
@@ -1118,10 +1126,13 @@ bool CsvViewerWidget::eventFilter(QObject *obj, QEvent *event)
 		} else if (!m_isActive && gr.contains(gp)) {
 			// Click inside our plugin — activate
 			m_isActive = true;
-			if (m_stackedWidget->currentWidget() == m_view)
-				m_view->setFocus(Qt::MouseFocusReason);
-			else
-				m_textBrowser->setFocus(Qt::MouseFocusReason);
+			bool isFindReplaceClick = m_findReplacePanel && w && (w == m_findReplacePanel || m_findReplacePanel->isAncestorOf(w));
+			if (!isFindReplaceClick) {
+				if (m_stackedWidget->currentWidget() == m_view)
+					m_view->setFocus(Qt::MouseFocusReason);
+				else
+					m_textBrowser->setFocus(Qt::MouseFocusReason);
+			}
 		}
 	}
 
