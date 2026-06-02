@@ -36,6 +36,7 @@
 #include <QHBoxLayout>
 #include <QCheckBox>
 #include <QComboBox>
+#include <QTextStream>
 
 #include <string.h>
 #include <dlfcn.h>
@@ -1156,7 +1157,8 @@ bool CsvViewerWidget::eventFilter(QObject *obj, QEvent *event)
 	// --- Top-level key handling (only when plugin is active) ---
 	if (event->type() == QEvent::KeyPress && pluginHasFocus) {
 		auto *ke = static_cast<QKeyEvent*>(event);
-		bool isFindReplaceEvent = m_findReplacePanel && w && (w == m_findReplacePanel || m_findReplacePanel->isAncestorOf(w));
+		QWidget *focusW = qApp->focusWidget();
+		bool isFindReplaceEvent = m_findReplacePanel && focusW && (focusW == m_findReplacePanel || m_findReplacePanel->isAncestorOf(focusW));
 
 		// Ctrl+F or Ctrl+R: Find/Replace (only in table view)
 		if (m_stackedWidget->currentWidget() == m_view) {
