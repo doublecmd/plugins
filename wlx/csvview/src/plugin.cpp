@@ -358,6 +358,7 @@ private:
 	void onSortByColumn(int column);
 
 	void installFocusGuard();
+	void restoreViewFocus();
 	bool isInputWidget(QWidget *w) const;
 	bool isSectionSelected(QHeaderView *header, int logicalIndex) const;
 	void restoreFocusToDC();
@@ -560,15 +561,39 @@ CsvViewerWidget::CsvViewerWidget(QWidget *parent)
 	QObject::connect(m_undoStack, &QUndoStack::indexChanged, this, [this]() { updateRowNumbers(); });
 	QObject::connect(m_view, &QTableWidget::itemChanged, this, &CsvViewerWidget::onItemChanged);
 
-	// Focus management: detect when focus leaves our widget hierarchy
+	// Focus management: detect when focus leaves or enters our widget hierarchy
 	connect(qApp, &QApplication::focusChanged, this, [this](QWidget *old, QWidget *now) {
-		if (!m_isActive) return;
 		bool oldInside = old && (old == this || this->isAncestorOf(old));
 		bool nowInside = now && (now == this || this->isAncestorOf(now));
-		if (oldInside && !nowInside) {
-			// Focus left our plugin
-			m_isActive = false;
-			m_activeInput = nullptr;
+
+		if (m_isActive) {
+			if (oldInside && !nowInside) {
+				// Focus left our plugin
+				setActive(false);
+			}
+		} else {
+			if (nowInside && !oldInside) {
+				// Focus is entering the plugin programmatically while inactive.
+				// Restore focus to the widget that had it (old), or fallback to DC.
+				if (old) {
+					QPointer<QWidget> pOld(old);
+					QTimer::singleShot(0, this, [this, pOld]() {
+						if (pOld) {
+							QWidget *currentFocus = QApplication::focusWidget();
+							if (currentFocus && (currentFocus == this || this->isAncestorOf(currentFocus))) {
+								pOld->setFocus(Qt::OtherFocusReason);
+							}
+						}
+					});
+				} else {
+					QTimer::singleShot(0, this, [this]() {
+						QWidget *currentFocus = QApplication::focusWidget();
+						if (currentFocus && (currentFocus == this || this->isAncestorOf(currentFocus))) {
+							restoreFocusToDC();
+						}
+					});
+				}
+			}
 		}
 	});
 
@@ -648,6 +673,16 @@ CsvViewerWidget::CsvViewerWidget(QWidget *parent)
 	connectMoveDebounce(m_view->verticalHeader());
 
 	installFocusGuard();
+
+	for (QAction *action : m_toolbar->actions()) {
+		QWidget *w = m_toolbar->widgetForAction(action);
+		if (w) {
+			w->setFocusPolicy(Qt::NoFocus);
+		}
+		QObject::connect(action, &QAction::triggered, this, [this]() {
+			QTimer::singleShot(0, this, &CsvViewerWidget::restoreViewFocus);
+		});
+	}
 }
 
 CsvViewerWidget::~CsvViewerWidget()
@@ -667,6 +702,13 @@ void CsvViewerWidget::installFocusGuard()
 void CsvViewerWidget::setActive(bool active)
 {
 	m_isActive = active;
+	if (!active) {
+		m_activeInput = nullptr;
+		clearFocus();
+		if (parentWidget()) {
+			parentWidget()->setFocus(Qt::OtherFocusReason);
+		}
+	}
 }
 
 bool CsvViewerWidget::isInputWidget(QWidget *w) const
@@ -685,6 +727,15 @@ void CsvViewerWidget::restoreFocusToDC()
 			if (fw == this || fw->isAncestorOf(this) || this->isAncestorOf(fw))
 				fw->clearFocus();
 		}
+	}
+}
+
+void CsvViewerWidget::restoreViewFocus()
+{
+	if (m_stackedWidget->currentWidget() == m_view) {
+		m_view->setFocus(Qt::OtherFocusReason);
+	} else {
+		m_textBrowser->setFocus(Qt::OtherFocusReason);
 	}
 }
 
@@ -932,12 +983,7 @@ bool CsvViewerWidget::eventFilter(QObject *obj, QEvent *event)
 		const QRect gr(mapToGlobal(QPoint(0, 0)), size());
 		if (m_isActive && !gr.contains(gp)) {
 			// Click outside our plugin — deactivate
-			m_isActive = false;
-			m_activeInput = nullptr;
-			if (QWidget *fw = QApplication::focusWidget()) {
-				if (fw == this || this->isAncestorOf(fw))
-					fw->clearFocus();
-			}
+			setActive(false);
 			return false; // let the click through to DC
 		} else if (!m_isActive && gr.contains(gp)) {
 			// Click inside our plugin — activate
@@ -953,6 +999,13 @@ bool CsvViewerWidget::eventFilter(QObject *obj, QEvent *event)
 	if (event->type() == QEvent::FocusIn) {
 		QWidget *w = qobject_cast<QWidget*>(obj);
 		if (w && (w == this || this->isAncestorOf(w))) {
+			QFocusEvent *fe = static_cast<QFocusEvent*>(event);
+			if (!m_isActive && fe->reason() == Qt::OtherFocusReason) {
+				// Focus bounce or programmatic focus entry while inactive.
+				// Do not activate the plugin, let the event filter propagate,
+				// and let QApplication::focusChanged handle focus restoration.
+				return false;
+			}
 			m_isActive = true;
 			if (isInputWidget(w)) {
 				m_activeInput = w;
@@ -1380,7 +1433,9 @@ bool CsvViewerWidget::loadFile(const QString& filePath)
 	m_undoStack->clear();
 	m_isProgrammaticChange = false;
 
-	QTimer::singleShot(0, this, [this]() { restoreFocusToDC(); });
+	if (!m_isActive) {
+		QTimer::singleShot(0, this, [this]() { restoreFocusToDC(); });
+	}
 	return true;
 }
 
@@ -1860,6 +1915,7 @@ void CsvViewerWidget::showContextMenu(const QPoint &pos)
 	}
 
 	QAction *res = menu.exec(m_view->viewport()->mapToGlobal(pos));
+	QTimer::singleShot(0, this, &CsvViewerWidget::restoreViewFocus);
 	if (!res) return;
 
 	if (res == actCopyTSV) copySelection('\t');
@@ -1921,6 +1977,7 @@ void CsvViewerWidget::showColumnContextMenu(const QPoint &pos)
 	}
 
 	QAction *res = menu.exec(m_view->horizontalHeader()->viewport()->mapToGlobal(pos));
+	QTimer::singleShot(0, this, &CsvViewerWidget::restoreViewFocus);
 	if (!res) return;
 
 	if (res == actCopy) copyColumnSelection('\t');
