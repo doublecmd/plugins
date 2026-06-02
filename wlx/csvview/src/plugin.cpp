@@ -477,7 +477,7 @@ CsvViewerWidget::CsvViewerWidget(QWidget *parent)
 	actHeader->setChecked(true);
 	actHeader->setToolTip("Toggle First Line As Header");
 
-	m_actFindReplace = m_toolbar->addAction(QString::fromUtf8("\xf0\x9f\x94\x8d Find/Replace"));
+	m_actFindReplace = m_toolbar->addAction(QString::fromUtf8("\xf0\x9f\x94\x8d\xef\xb8\x8e Find/Replace"));
 	m_actFindReplace->setToolTip("Find and Replace (Ctrl+F / Ctrl+R)");
 	m_actFindReplace->setCheckable(true);
 
@@ -1089,6 +1089,7 @@ void CsvViewerWidget::onSortByColumn(int column) {
 
 bool CsvViewerWidget::eventFilter(QObject *obj, QEvent *event)
 {
+	QWidget *w = qobject_cast<QWidget*>(obj);
 	// --- Determine if our plugin has focus ---
 	bool pluginHasFocus = m_isActive;
 
@@ -1113,7 +1114,6 @@ bool CsvViewerWidget::eventFilter(QObject *obj, QEvent *event)
 
 	// --- Track FocusIn on our children ---
 	if (event->type() == QEvent::FocusIn) {
-		QWidget *w = qobject_cast<QWidget*>(obj);
 		if (w && (w == this || this->isAncestorOf(w))) {
 			QFocusEvent *fe = static_cast<QFocusEvent*>(event);
 			if (!m_isActive && fe->reason() == Qt::OtherFocusReason) {
@@ -1139,6 +1139,8 @@ bool CsvViewerWidget::eventFilter(QObject *obj, QEvent *event)
 	// --- Top-level key handling (only when plugin is active) ---
 	if (event->type() == QEvent::KeyPress && pluginHasFocus) {
 		auto *ke = static_cast<QKeyEvent*>(event);
+		bool isFindReplaceEvent = m_findReplacePanel && w && (w == m_findReplacePanel || m_findReplacePanel->isAncestorOf(w));
+
 		// Ctrl+F or Ctrl+R: Find/Replace (only in table view)
 		if (m_stackedWidget->currentWidget() == m_view) {
 			if ((ke->modifiers() & Qt::ControlModifier) && (ke->key() == Qt::Key_F || ke->key() == Qt::Key_R)) {
@@ -1151,28 +1153,28 @@ bool CsvViewerWidget::eventFilter(QObject *obj, QEvent *event)
 			onSave();
 			return true;
 		}
-		// Ctrl+Z: Undo (only when not editing)
-		if (!m_activeInput && (ke->modifiers() & Qt::ControlModifier) && !(ke->modifiers() & Qt::ShiftModifier) && ke->key() == Qt::Key_Z) {
+		// Ctrl+Z: Undo (only when not editing and not in Find/Replace inputs)
+		if (!m_activeInput && !isFindReplaceEvent && (ke->modifiers() & Qt::ControlModifier) && !(ke->modifiers() & Qt::ShiftModifier) && ke->key() == Qt::Key_Z) {
 			if (m_undoStack->canUndo()) {
 				m_undoStack->undo();
 				return true;
 			}
 		}
 		// Ctrl+Shift+Z: Redo
-		if (!m_activeInput && (ke->modifiers() & Qt::ControlModifier) && (ke->modifiers() & Qt::ShiftModifier) && ke->key() == Qt::Key_Z) {
+		if (!m_activeInput && !isFindReplaceEvent && (ke->modifiers() & Qt::ControlModifier) && (ke->modifiers() & Qt::ShiftModifier) && ke->key() == Qt::Key_Z) {
 			if (m_undoStack->canRedo()) {
 				m_undoStack->redo();
 				return true;
 			}
 		}
 		// Ctrl+Y: Redo
-		if (!m_activeInput && (ke->modifiers() & Qt::ControlModifier) && ke->key() == Qt::Key_Y) {
+		if (!m_activeInput && !isFindReplaceEvent && (ke->modifiers() & Qt::ControlModifier) && ke->key() == Qt::Key_Y) {
 			if (m_undoStack->canRedo()) {
 				m_undoStack->redo();
 				return true;
 			}
 		}
-		if (!m_activeInput && m_stackedWidget->currentWidget() == m_view) {
+		if (!m_activeInput && m_stackedWidget->currentWidget() == m_view && !isFindReplaceEvent) {
 			if ((ke->modifiers() & Qt::ControlModifier) && ke->key() == Qt::Key_C) {
 				copySelection('\t');
 				return true;
@@ -1262,7 +1264,6 @@ bool CsvViewerWidget::eventFilter(QObject *obj, QEvent *event)
 	}
 
 	// --- Child widget events (header drag handling) ---
-	QWidget *w = qobject_cast<QWidget*>(obj);
 	if (w && (w == this || this->isAncestorOf(w))) {
 		if (event->type() == QEvent::ChildAdded) {
 			auto *ce = static_cast<QChildEvent*>(event);
