@@ -434,6 +434,10 @@ CsvViewerWidget::CsvViewerWidget(QWidget *parent)
 
 	m_toolbar = new QToolBar(this);
 	m_toolbar->setFocusPolicy(Qt::NoFocus);
+	m_toolbar->setStyleSheet(
+		"QToolBar { spacing: 2px; }"
+		"QToolButton { padding: 2px 4px; margin: 1px; }"
+	);
 	
 	m_undoStack = new QUndoStack(this);
 
@@ -533,8 +537,16 @@ CsvViewerWidget::CsvViewerWidget(QWidget *parent)
 
 	// Initialize Find/Replace panel
 	m_findReplacePanel = new QWidget(this);
+	m_findReplacePanel->setObjectName("FindReplacePanel");
 	m_findReplacePanel->setVisible(false);
-	m_findReplacePanel->setStyleSheet("QWidget { background-color: palette(window); border-top: 1px solid palette(mid); }");
+	m_findReplacePanel->setStyleSheet(
+		"QWidget#FindReplacePanel { background-color: palette(window); border-top: 1px solid palette(mid); }"
+		"QPushButton { border: 1px solid palette(mid); border-radius: 3px; padding: 2px 8px; background-color: palette(button); }"
+		"QPushButton:hover { background-color: palette(light); }"
+		"QPushButton:pressed { background-color: palette(midlight); }"
+		"QPushButton#CloseButton { border: none; background: transparent; }"
+		"QPushButton#CloseButton:hover { background-color: palette(light); }"
+	);
 
 	QVBoxLayout *panelLayout = new QVBoxLayout(m_findReplacePanel);
 	panelLayout->setContentsMargins(6, 6, 6, 6);
@@ -585,6 +597,7 @@ CsvViewerWidget::CsvViewerWidget(QWidget *parent)
 	m_lblStatus->setStyleSheet("color: palette(link); font-weight: bold;");
 
 	QPushButton *btnClose = new QPushButton("✕", m_findReplacePanel);
+	btnClose->setObjectName("CloseButton");
 	btnClose->setFixedWidth(30);
 	btnClose->setFlat(true);
 	btnClose->setFocusPolicy(Qt::NoFocus);
