@@ -72,6 +72,14 @@ install -m 644 wdx/mediainfo/luajit/*.lua      release/wdx/mediainfo/
 install -m 644 wdx/translitwdx/translitwdx.lua release/wdx/translitwdx/
 install -m 644 wdx/translitwdx/readme.txt      release/wdx/translitwdx/
 
+# csvview
+mkdir -p release/wlx/csvview
+make -C wlx/csvview/src clean all
+install -m 644 wlx/csvview/csvview_qt6.wlx release/wlx/csvview/
+cp -r wlx/csvview/langs release/wlx/csvview/
+install -m 644 wlx/csvview/*.md release/wlx/csvview/
+install -m 644 wlx/csvview/*.png release/wlx/csvview/
+
 # logview
 mkdir -p release/wlx/logview
 mkdir -p wlx/logview/build
