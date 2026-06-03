@@ -198,24 +198,31 @@ private:
 
 class EditCellCommand : public QUndoCommand {
 public:
-	EditCellCommand(QTableWidget *view, int row, int col, const QString &oldText, const QString &newText, QUndoCommand *parent = nullptr)
-		: QUndoCommand(parent), m_view(view), m_row(row), m_col(col), m_oldText(oldText), m_newText(newText) {
+	EditCellCommand(QTableWidget *view, int row, int col, const QString &oldText, const QString &newText, bool oldQuoted, bool newQuoted, QUndoCommand *parent = nullptr)
+		: QUndoCommand(parent), m_view(view), m_row(row), m_col(col), m_oldText(oldText), m_newText(newText), m_oldQuoted(oldQuoted), m_newQuoted(newQuoted) {
 		setText(QString("Edit cell (%1, %2)").arg(row).arg(col));
 	}
 	void undo() override {
 		m_view->blockSignals(true);
-		if (QTableWidgetItem *item = m_view->item(m_row, m_col)) item->setText(m_oldText);
+		if (QTableWidgetItem *item = m_view->item(m_row, m_col)) {
+			item->setText(m_oldText);
+			item->setData(WasQuotedRole, m_oldQuoted);
+		}
 		m_view->blockSignals(false);
 	}
 	void redo() override {
 		m_view->blockSignals(true);
-		if (QTableWidgetItem *item = m_view->item(m_row, m_col)) item->setText(m_newText);
+		if (QTableWidgetItem *item = m_view->item(m_row, m_col)) {
+			item->setText(m_newText);
+			item->setData(WasQuotedRole, m_newQuoted);
+		}
 		m_view->blockSignals(false);
 	}
 private:
 	QTableWidget *m_view;
 	int m_row, m_col;
 	QString m_oldText, m_newText;
+	bool m_oldQuoted, m_newQuoted;
 };
 
 class RowColCommand : public QUndoCommand {
@@ -927,16 +934,12 @@ void CsvViewerWidget::onItemChanged(QTableWidgetItem *item) {
 	m_isProgrammaticChange = false;
 
 	if (oldText != newText) {
-		// Auto-quote if user introduced separator in a previously unquoted cell
-		if (!item->data(WasQuotedRole).toBool() && newText.contains(m_separator)) {
-			m_isProgrammaticChange = true;
-			item->setData(WasQuotedRole, true);
-			m_isProgrammaticChange = false;
-		}
+		bool oldQuoted = item->data(WasQuotedRole).toBool();
+		bool newQuoted = oldQuoted || newText.contains(m_separator);
 		m_isProgrammaticChange = true;
 		item->setText(oldText); // Revert so the undo command applies the new text
 		m_isProgrammaticChange = false;
-		m_undoStack->push(new EditCellCommand(m_view, item->row(), item->column(), oldText, newText));
+		m_undoStack->push(new EditCellCommand(m_view, item->row(), item->column(), oldText, newText, oldQuoted, newQuoted));
 	}
 }
 
@@ -2454,7 +2457,9 @@ void CsvViewerWidget::doReplace()
 		}
 
 		if (newText != oldText) {
-			m_undoStack->push(new EditCellCommand(m_view, row, col, oldText, newText));
+			bool oldQuoted = item ? item->data(WasQuotedRole).toBool() : false;
+			bool newQuoted = oldQuoted || newText.contains(m_separator);
+			m_undoStack->push(new EditCellCommand(m_view, row, col, oldText, newText, oldQuoted, newQuoted));
 			m_lblStatus->setText(QString("Replaced match at (%1, %2)").arg(row + 1).arg(col + 1));
 		}
 		// Move to the next match
@@ -2525,6 +2530,8 @@ void CsvViewerWidget::doReplaceAll()
 		int col;
 		QString oldText;
 		QString newText;
+		bool oldQuoted;
+		bool newQuoted;
 	};
 	QList<Replacement> replacements;
 
@@ -2562,7 +2569,9 @@ void CsvViewerWidget::doReplaceAll()
 			}
 
 			if (newText != oldText) {
-				replacements.append({r, c, oldText, newText});
+				bool oldQuoted = item ? item->data(WasQuotedRole).toBool() : false;
+				bool newQuoted = oldQuoted || newText.contains(m_separator);
+				replacements.append({r, c, oldText, newText, oldQuoted, newQuoted});
 			}
 		}
 	}
@@ -2570,7 +2579,7 @@ void CsvViewerWidget::doReplaceAll()
 	if (!replacements.isEmpty()) {
 		m_undoStack->beginMacro(QString("Replace All: %1 -> %2").arg(query).arg(replaceText));
 		for (const auto &rep : replacements) {
-			m_undoStack->push(new EditCellCommand(m_view, rep.row, rep.col, rep.oldText, rep.newText));
+			m_undoStack->push(new EditCellCommand(m_view, rep.row, rep.col, rep.oldText, rep.newText, rep.oldQuoted, rep.newQuoted));
 		}
 		m_undoStack->endMacro();
 		m_lblStatus->setText(QString("Replaced %1 occurrences.").arg(replacements.size()));

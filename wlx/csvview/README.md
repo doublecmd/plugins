@@ -105,9 +105,32 @@ Toggling this button automatically reloads and re-parses the file.
 
 ---
 
-### Search
+### Find & Replace
 
-Press **`F7`** (or use Lister's built-in search) to search for substrings across all cells.
+Press **`Ctrl+F`** (to find), **`Ctrl+R`** (to replace), or click the **`🔍 Find/Replace`** toolbar button to open the inline Find/Replace panel at the bottom of the table grid view. Hitting **`Escape`** closes it.
+
+* **Search Options**:
+  - **Match Case**: Performs a case-sensitive search.
+  - **Match Entire Cell**: Only matches cells that are an exact match for the query.
+  - **Regular Expression**: Uses standard regex patterns for searching and replacing.
+* **Scope Options**:
+  - **All Cells**: Searches and replaces across the entire spreadsheet grid.
+  - **Selected Cells**: Limits the search/replace to the currently highlighted cells.
+  - **Current Column**: Restricts operations to the column of the active cell.
+  - **Current Row**: Restricts operations to the row of the active cell.
+* **Action Buttons**:
+  - **Find Next** (or hitting **`Enter`** in the Find input): Highlights and scrolls to the next matching cell.
+  - **Find Prev**: Highlights and scrolls to the previous matching cell.
+  - **Replace** (or hitting **`Enter`** in the Replace input): Replaces the text of the current match and automatically advances to the next.
+  - **Replace All**: Evaluates all cells inside the selected scope and applies replacements atomically in a single undo macro.
+* **Automatic Quoting Safeguard**:
+  - If a replacement introduces the separator character (e.g. inserting `,` in a CSV or `\t` in a TSV), the plugin automatically wraps the cell value in double quotes and escapes existing quotes correctly in the raw text mode and on file save. This metadata change is fully integrated into the Undo/Redo stack.
+
+---
+
+### Classic Lister Search
+
+Press **`F7`** (or use Double Commander's built-in search) to search for substrings across all cells using the classic dialog.
 
 ---
 
