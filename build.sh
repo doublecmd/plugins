@@ -18,6 +18,7 @@ mkdir -p release/wdx/translitwdx
 mkdir -p release/wdx/similarity
 mkdir -p release/wdx/xpi_wdx
 mkdir -p release/wfx/gvfs
+mkdir -p release/wfx/rclone
 mkdir -p release/wlx/gstplayer
 mkdir -p release/wlx/fileinfo
 
@@ -53,6 +54,11 @@ install -m 644 wdx/xpi_wdx/xpi_wdx.wdx release/wdx/xpi_wdx/
 make -C wfx/gvfs/src clean all
 install -m 644 wfx/gvfs/gvfs.wfx release/wfx/gvfs/
 
+lazbuild --build-mode=Release wfx/rclone/src/rclone.lpi
+install -m 644 wfx/rclone/rclone.wfx     release/wfx/rclone/
+install -m 644 wfx/rclone/src/rclone.ico release/wfx/rclone/
+install -m 644 wfx/rclone/COPYING.txt    release/wfx/rclone/
+
 make -C wlx/gstplayer/src clean all
 install -m 644 wlx/gstplayer/gstplayer.wlx release/wlx/gstplayer/
 install -m 644 wlx/gstplayer/readme.txt    release/wlx/gstplayer/
@@ -73,6 +79,30 @@ install -m 644 wlx/csvview/csvview_qt6.wlx release/wlx/csvview/
 cp -r wlx/csvview/langs release/wlx/csvview/
 install -m 644 wlx/csvview/*.md release/wlx/csvview/
 install -m 644 wlx/csvview/*.png release/wlx/csvview/
+
+# logview
+mkdir -p release/wlx/logview
+mkdir -p wlx/logview/build
+(cd wlx/logview/build && cmake .. && make)
+install -m 644 wlx/logview/build/logviewer_wlx.wlx release/wlx/logview/
+install -m 644 wlx/logview/*.md release/wlx/logview/
+install -m 644 wlx/logview/*.png release/wlx/logview/
+
+# mpv_wayland
+mkdir -p release/wlx/mpv_wayland
+mkdir -p wlx/mpv_wayland/build
+(cd wlx/mpv_wayland/build && cmake .. && make)
+install -m 644 wlx/mpv_wayland/build/mpv_wayland.wlx release/wlx/mpv_wayland/
+install -m 644 wlx/mpv_wayland/*.md release/wlx/mpv_wayland/
+install -m 644 wlx/mpv_wayland/*.png release/wlx/mpv_wayland/
+
+# kate
+mkdir -p release/wlx/kate
+mkdir -p wlx/kate/build
+(cd wlx/kate/build && cmake .. && make)
+install -m 644 wlx/kate/build/rich_editor_qt.wlx release/wlx/kate/
+install -m 644 wlx/kate/*.md release/wlx/kate/
+install -m 644 wlx/kate/*.png release/wlx/kate/
 
 pushd release
 tar -czpf ../plugins-$(date +%y.%m.%d)-$ARCH.tar.gz *

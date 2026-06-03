@@ -1,5 +1,5 @@
 -- fb2wdx.lua (cross-platform)
--- 2025.04.07
+-- 2026.05.30
 -- Для автодетекта как UTF-8 without BOM --
 
 local r, zip = pcall(require, 'zip')
@@ -50,7 +50,8 @@ local fields = {
  {"Publish: ISBN",            8},
  {"Publish: sequence",        8},
  {"Publish: sequence number", 1},
- {"Custom info",              6}
+ {"Custom info",              6},
+ {"Custom info (text)",       9}
 }
 local encoding = {
 ['windows-1250'] = 'cp1250',
@@ -90,7 +91,7 @@ function ContentGetDetectString()
 end
 
 function ContentGetValue(FileName, FieldIndex, UnitIndex, flags)
-  if FieldIndex > 27 then return nil end
+  if FieldIndex > 28 then return nil end
   local e
   if filename ~= FileName then
     e = string.lower(string.sub(FileName, string.len(FileName) - 3, -1))
@@ -213,9 +214,13 @@ function ContentGetValue(FileName, FieldIndex, UnitIndex, flags)
   end
   local isUTF8 = false
   local nr1, nr2 = string.find(bd, 'encoding="', 1, true)
-  if nr1 == nil then return nil end
-  nr1 = string.find(bd, '"', nr2 + 1, true)
-  if nr1 == nil then return nil end
+  if nr1 == nil then
+    nr1, nr2 = string.find(bd, "encoding='", 1, true)
+    if nr1 == nil then return nil end
+    nr1 = string.find(bd, "'", nr2 + 1, true)
+  else
+    nr1 = string.find(bd, '"', nr2 + 1, true)
+  end
   local enc = string.lower(string.sub(bd, nr2 + 1, nr1 - 1))
   if enc == 'utf-8' then isUTF8 = true end
   if FieldIndex == 0 then
@@ -262,15 +267,24 @@ function ContentGetValue(FileName, FieldIndex, UnitIndex, flags)
     pd = GetTagAttr(pd, 'sequence')
     if pd == nil then return nil end
     pd = string.match(pd, 'name="([^"]+)"')
-  elseif FieldIndex == 27 then
+  elseif (FieldIndex == 27) or (FieldIndex == 28) then
     nr1 = string.find(bd, '<custom-info', 1, true)
-    if nr1 == nil then return false end
-    nr2 = string.find(bd, '>', nr1, true)
-    nr1 = string.find(bd, '</custom-info>', nr2, true)
-    if nr1 == nil then return false end
-    pd = string.sub(bd, nr2 + 1, nr1 - 1)
-    if string.len(pd) > 0 then return true end
-    return false
+    if nr1 == nil then
+      if FieldIndex == 27 then
+        return false
+      elseif FieldIndex == 28 then
+        return nil
+      end
+    else
+      if FieldIndex == 27 then return true end
+      nr3 = nr1
+      while true do
+        nr2 = string.find(bd, '</custom-info>', nr3, true)
+        if nr2 == nil then break end
+        nr3 = nr2 + 1
+      end
+      pd = string.sub(bd, nr1, nr3)
+    end
   end
   if pd ~= nil then
     if isUTF8 == false then pd = EncodeToUTF8(pd, enc) end
