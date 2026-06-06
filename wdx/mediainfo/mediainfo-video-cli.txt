@@ -1,5 +1,5 @@
 mediainfo-video-cli.lua
--- 2021.08.24
+-- 2026.06.03
 
 Get some technical information about video files.
 
