@@ -1,5 +1,5 @@
 -- mediainfo-imagesize.lua
--- 2019.04.25
+-- 2026.06.03
 --
 -- Get image size (width and height, pixels).
 -- Normal Lua, not LuaJIT. CLI version of MediaInfo.
@@ -9,9 +9,9 @@
 
 -- FieldName, Units, FieldType, Context;Param
 local fields = {
- {"Width",          "", 2, "Image;%Width%"},
- {"Height",         "", 2, "Image;%Height%"},
- {"Width x Height", "", 8, "Image;%Width%x%Height%"}
+{"Width",          "", 1, "Image;%Width%"},
+{"Height",         "", 1, "Image;%Height%"},
+{"Width x Height", "", 8, "Image;%Width%x%Height%"}
 }
 
 function ContentGetSupportedField(FieldIndex)
@@ -38,5 +38,13 @@ function ContentGetValue(FileName, FieldIndex, UnitIndex, flags)
   if not h then return nil end
   local res = h:read("*a")
   h:close()
-  return string.gsub(res, "[\r\n]+", "")
+  local t = string.gsub(res, "[\r\n]+", "")
+  if t ~= "" then
+    if FieldIndex == 2 then
+      if string.len(t) > 1 then return t end
+    else
+      return tonumber(t)
+    end
+  end
+  return nil
 end

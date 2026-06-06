@@ -1,5 +1,5 @@
 -- mediainfo-imagesize.lua
--- 2019.04.25
+-- 2026.06.03
 --
 -- Get image size (width and height, pixels).
 -- Fields: "Width","Height" and "Width x Height"
@@ -13,8 +13,8 @@ local mediaInfo = require("ffi-mediaInfo")
 
 local mi = nil
 local par_name = {
- "Image;%Width%",
- "Image;%Height%"
+"Image;%Width%",
+"Image;%Height%"
 }
 local res = {}
 local filename = ""
@@ -31,9 +31,9 @@ end
 
 function ContentGetSupportedField(FieldIndex)
   if FieldIndex == 0 then
-    return "Width", "", 2; -- FieldName,Units,ft_numeric_64
+    return "Width", "", 1; -- FieldName,Units,ft_numeric_32
   elseif FieldIndex == 1 then
-    return "Height", "", 2
+    return "Height", "", 1
   elseif FieldIndex == 2 then
     return "Width x Height", "", 8; -- FieldName,Units,ft_string
   end
@@ -63,10 +63,12 @@ function ContentGetValue(FileName, FieldIndex, UnitIndex, flags)
     mediaInfo.MediaInfoA_Close(mi)
     filename = FileName
   end
-  if FieldIndex == 2 then
-    return res[1] .. "x" .. res[2]
-  else
-    return res[FieldIndex + 1]
+  if res[1] ~= "" then
+    if FieldIndex == 2 then
+      return res[1] .. "x" .. res[2]
+    else
+      return tonumber(res[FieldIndex + 1])
+    end
   end
   return nil
 end
