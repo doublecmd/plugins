@@ -1,0 +1,565 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-02-07 23:08+0300\n"
+"PO-Revision-Date: 2026-02-07 23:13+0300\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<12 || n%100>14) ? 1 : 2);\n"
+"X-Generator: Poedit 3.8\n"
+
+#: ../wlx/libarchive_cat_crap/src/plugin.c:65
+#: ../wlx/libarchive_cat_qt_crap/src/plugin.cpp:56
+#, c-format
+msgid "libarchive: failed to read %s"
+msgstr "libarchive: не удалось прочитать %s"
+
+#: ../wlx/libarchive_cat_crap/src/plugin.c:196
+#: ../wlx/libarchive_cat_qt_crap/src/plugin.cpp:147
+#: ../wlx/md4c_qt/src/plugin.cpp:97 ../wlx/fileinfo_qt/src/plugin.cpp:97
+#: ../wlx/htmlconv_qt_crap/src/plugin.cpp:118
+#: ../wlx/wlxwebkit/src/wlxwebkit.c:128
+#: ../wlx/yet_another_vte_plugin/src/plugin.c:288
+#: ../wlx/gtksourceview/src/gtksourceview.c:720
+#: ../wlx/sqlview_qt/src/plugin.cpp:273
+#: ../wlx/syntax-highlighting_qt/src/plugin.cpp:153
+#: ../wlx/md4c_webkit_qt/src/plugin.cpp:90 ../wlx/csvview_qt/src/plugin.cpp:307
+#: ../wlx/hx_qt_crap/src/plugin.cpp:81 ../wlx/fileinfo/src/fileinfo.c:403
+#: ../wlx/jsonview_qt/src/plugin.cpp:262
+#: ../wlx/mimescript/src/mimescriptwlx.c:309
+#: ../wlx/htmlview_qt_crap/src/plugin.cpp:55
+#: ../wlx/wlxwebkit_qt/src/wlxwebkit.cpp:167
+#: ../wlx/wlxwebkit_qt_crap/src/wlxwebkit.cpp:111
+#, c-format
+msgid "\"%s\" not found!"
+msgstr "\"%s\" не найден!"
+
+#: ../wlx/imagemagick/src/wlximagemagick.c:215
+#: ../wlx/gtkimgview_crap/src/gtkimgview.c:371
+#: ../wlx/qtpdfview_qt/src/plugin.cpp:161
+#: ../wlx/gtkimgview/src/gtkimgview.c:222
+msgid "Zoom In"
+msgstr "Увеличить"
+
+#: ../wlx/imagemagick/src/wlximagemagick.c:220
+#: ../wlx/gtkimgview_crap/src/gtkimgview.c:376
+#: ../wlx/qtpdfview_qt/src/plugin.cpp:172
+#: ../wlx/gtkimgview/src/gtkimgview.c:227
+msgid "Zoom Out"
+msgstr "Уменьшить"
+
+#: ../wlx/imagemagick/src/wlximagemagick.c:225
+#: ../wlx/gtkimgview_crap/src/gtkimgview.c:381
+#: ../wlx/qtpdfview_qt/src/plugin.cpp:183
+#: ../wlx/gtkimgview/src/gtkimgview.c:232
+msgid "Original Size"
+msgstr "Исходный размер"
+
+#: ../wlx/imagemagick/src/wlximagemagick.c:230
+#: ../wlx/wlxpview/src/wlxPView.c:469 ../wlx/wlxpview/src/wlxPView.c:470
+#: ../wlx/gtkimgview_crap/src/gtkimgview.c:386
+#: ../wlx/qtpdfview_qt/src/plugin.cpp:196
+#: ../wlx/gtkimgview/src/gtkimgview.c:237
+msgid "Fit"
+msgstr "Вместить"
+
+#: ../wlx/imagemagick/src/wlximagemagick.c:237
+#: ../wlx/gtkimgview_crap/src/gtkimgview.c:393
+#: ../wlx/gtkimgview/src/gtkimgview.c:244
+msgid "Copy to Clipboard"
+msgstr "Копировать в буфер"
+
+#: ../wlx/imagemagick/src/wlximagemagick.c:240
+#: ../wlx/imagemagick/src/wlximagemagick.c:243
+#: ../wlx/gtkimgview_crap/src/gtkimgview.c:396
+#: ../wlx/gtkimgview_crap/src/gtkimgview.c:399
+#: ../wlx/gtkimgview/src/gtkimgview.c:247
+#: ../wlx/gtkimgview/src/gtkimgview.c:250
+msgid "Rotate"
+msgstr "Повернуть"
+
+#: ../wlx/imagemagick/src/wlximagemagick.c:246
+#: ../wlx/imagemagick/src/wlximagemagick.c:249
+#: ../wlx/gtkimgview_crap/src/gtkimgview.c:402
+#: ../wlx/gtkimgview_crap/src/gtkimgview.c:405
+#: ../wlx/gtkimgview/src/gtkimgview.c:253
+#: ../wlx/gtkimgview/src/gtkimgview.c:256
+msgid "Rotate Clockwise"
+msgstr "Повернуть по часовой стрелке"
+
+#: ../wlx/imagemagick/src/wlximagemagick.c:252
+#: ../wlx/imagemagick/src/wlximagemagick.c:255
+#: ../wlx/gtkimgview_crap/src/gtkimgview.c:408
+#: ../wlx/gtkimgview_crap/src/gtkimgview.c:411
+#: ../wlx/gtkimgview/src/gtkimgview.c:259
+#: ../wlx/gtkimgview/src/gtkimgview.c:262
+msgid "Flip Horizontally"
+msgstr "Отразить по горизонтали"
+
+#: ../wlx/imagemagick/src/wlximagemagick.c:258
+#: ../wlx/imagemagick/src/wlximagemagick.c:261
+#: ../wlx/gtkimgview_crap/src/gtkimgview.c:414
+#: ../wlx/gtkimgview_crap/src/gtkimgview.c:417
+#: ../wlx/gtkimgview/src/gtkimgview.c:265
+#: ../wlx/gtkimgview/src/gtkimgview.c:268
+msgid "Flip Vertically"
+msgstr "Отразить по вертикали"
+
+#: ../wlx/dirsize_crap/src/plugin.c:245
+msgid "Name"
+msgstr "Название"
+
+#: ../wlx/dirsize_crap/src/plugin.c:258
+msgid "Size"
+msgstr "Размер"
+
+#: ../wlx/wlxpview/src/wlxPView.c:139
+msgid "Scale ~x"
+msgstr "Масштаб ~x"
+
+#: ../wlx/wlxpview/src/wlxPView.c:183 ../wlx/wlxpview/src/wlxPView.c:438
+#: ../wlx/wlxpview/src/wlxPView.c:439 ../wlx/qtpdfview_qt/src/plugin.cpp:140
+msgid "Go to..."
+msgstr "Перейти..."
+
+#: ../wlx/wlxpview/src/wlxPView.c:193 ../wlx/qtpdfview_qt/src/plugin.cpp:148
+msgid "Page number to go to:"
+msgstr "Страница на которую перейти:"
+
+#: ../wlx/wlxpview/src/wlxPView.c:296 ../wlx/wlxpview/src/wlxPView.c:477
+#: ../wlx/wlxpview/src/wlxPView.c:478
+msgid "Text"
+msgstr "Текст"
+
+#: ../wlx/wlxpview/src/wlxPView.c:324 ../wlx/wlxpview/src/wlxPView.c:483
+#: ../wlx/wlxpview/src/wlxPView.c:484 ../wlx/qtpdfview_qt/src/plugin.cpp:222
+msgid "Info"
+msgstr "Информация"
+
+#: ../wlx/wlxpview/src/wlxPView.c:328
+#, c-format
+msgid ""
+"Title: %s\n"
+"Author: %s\n"
+"Subject: %s\n"
+"Creator: %s\n"
+"Producer: %s\n"
+"Keywords: %s\n"
+"Version: %s"
+msgstr ""
+"Название: %s\n"
+"Автор: %s\n"
+"Тема: %s\n"
+"Создатель: %s\n"
+"Сегнерировано: %s\n"
+"Ключевые слова: %s\n"
+"Версия: %s"
+
+#: ../wlx/wlxpview/src/wlxPView.c:346
+msgid "metadata not found"
+msgstr "Метаданные не найдены"
+
+#: ../wlx/wlxpview/src/wlxPView.c:414 ../wlx/wlxpview/src/wlxPView.c:415
+#: ../wlx/qtpdfview_qt/src/plugin.cpp:60
+msgid "First page"
+msgstr "Первая страница"
+
+#: ../wlx/wlxpview/src/wlxPView.c:420 ../wlx/wlxpview/src/wlxPView.c:421
+#: ../wlx/qtpdfview_qt/src/plugin.cpp:72
+msgid "Previous page"
+msgstr "Предыдущая страница"
+
+#: ../wlx/wlxpview/src/wlxPView.c:426 ../wlx/wlxpview/src/wlxPView.c:427
+#: ../wlx/qtpdfview_qt/src/plugin.cpp:87
+msgid "Next page"
+msgstr "Следующая страница"
+
+#: ../wlx/wlxpview/src/wlxPView.c:432 ../wlx/wlxpview/src/wlxPView.c:433
+#: ../wlx/qtpdfview_qt/src/plugin.cpp:102
+msgid "Last page"
+msgstr "Последняя страница"
+
+#: ../wlx/qtpdfview_qt/src/plugin.cpp:208
+msgid "Page Mode"
+msgstr "Режим страницы"
+
+#: ../wlx/qtpdfview_qt/src/plugin.cpp:228
+#: ../wlx/qmediaplayer_qt/src/plugin.cpp:54
+msgid "Author"
+msgstr ""
+
+#: ../wlx/qtpdfview_qt/src/plugin.cpp:229
+#: ../wlx/qmediaplayer_qt/src/plugin.cpp:50
+msgid "Title"
+msgstr ""
+
+#: ../wlx/qtpdfview_qt/src/plugin.cpp:230
+msgid "Subject"
+msgstr ""
+
+#: ../wlx/qtpdfview_qt/src/plugin.cpp:231
+msgid "Producer"
+msgstr ""
+
+#: ../wlx/qtpdfview_qt/src/plugin.cpp:232
+msgid "Creator"
+msgstr ""
+
+#: ../wlx/qtpdfview_qt/src/plugin.cpp:233
+msgid "Keywords"
+msgstr ""
+
+#: ../wlx/qtpdfview_qt/src/plugin.cpp:234
+msgid "Creation Date"
+msgstr ""
+
+#: ../wlx/qtpdfview_qt/src/plugin.cpp:235
+msgid "Modification Date"
+msgstr ""
+
+#: ../wlx/qtpdfview_qt/src/plugin.cpp:255
+#: ../wlx/qmediaplayer_qt/src/plugin.cpp:468
+#: ../wlx/qmediaplayer_qt/src/plugin.cpp:524
+msgid "no suitable info available"
+msgstr ""
+
+#: ../wlx/sqlview_gtk2/src/plugin.c:124 ../wlx/sqlview_gtk2/src/plugin.c:222
+#: ../wlx/sqlview_qt/src/plugin.cpp:97
+msgid "Query"
+msgstr ""
+
+#: ../wlx/sqlview_gtk2/src/plugin.c:132 ../wlx/sqlview_qt/src/plugin.cpp:131
+msgid "Please enter a new query and press OK to execute it"
+msgstr ""
+
+#: ../wlx/sqlview_gtk2/src/plugin.c:227 ../wlx/sqlview_qt/src/plugin.cpp:89
+msgid "Table:"
+msgstr ""
+
+#: ../wlx/gtksourceview/src/gtksourceview.c:52
+msgid "Failed to load file"
+msgstr "Не удалось открыть файл"
+
+#: ../wlx/gtksourceview/src/gtksourceview.c:53
+#: ../wlx/gtksourceview/src/gtksourceview.c:360
+#: ../wlx/gtksourceview/src/gtksourceview.c:563
+msgid "Default"
+msgstr "По умолчанию"
+
+#: ../wlx/gtksourceview/src/gtksourceview.c:54
+#: ../wlx/gtksourceview/src/gtksourceview.c:380
+msgid "Encoding:"
+msgstr "Кодировка:"
+
+#: ../wlx/gtksourceview/src/gtksourceview.c:200
+#: ../wlx/gtksourceview/src/gtksourceview.c:590
+msgid "Options"
+msgstr "Настройки"
+
+#: ../wlx/gtksourceview/src/gtksourceview.c:207
+msgid "Font"
+msgstr "Шрифт"
+
+#: ../wlx/gtksourceview/src/gtksourceview.c:215
+msgid "Style"
+msgstr "Тема"
+
+#: ../wlx/gtksourceview/src/gtksourceview.c:232
+msgid "Blank space"
+msgstr "Отсупы"
+
+#: ../wlx/gtksourceview/src/gtksourceview.c:238
+msgid "Above paragraphs"
+msgstr "Над текстом"
+
+#: ../wlx/gtksourceview/src/gtksourceview.c:239
+msgid "Below paragraphs"
+msgstr "Под текстом"
+
+#: ../wlx/gtksourceview/src/gtksourceview.c:240
+msgid "Tab width"
+msgstr "Ширина табуляции"
+
+#: ../wlx/gtksourceview/src/gtksourceview.c:260
+msgid "Enca Lang"
+msgstr "Локаль Enca"
+
+#: ../wlx/gtksourceview/src/gtksourceview.c:336
+msgid "Language:"
+msgstr "Язык:"
+
+#: ../wlx/gtksourceview/src/gtksourceview.c:356
+msgid "file seems empty"
+msgstr "походу файл пустой"
+
+#: ../wlx/gtksourceview/src/gtksourceview.c:573
+msgid "Custom encoding"
+msgstr "Другая кодировка"
+
+#: ../wlx/gtksourceview/src/gtksourceview.c:597
+msgid "Draw Spaces"
+msgstr "Пробелы"
+
+#: ../wlx/gtksourceview/src/gtksourceview.c:598
+msgid "Text Cursor"
+msgstr "Курсор"
+
+#: ../wlx/gtksourceview/src/gtksourceview.c:599
+msgid "Line Numbers"
+msgstr "Номера строк"
+
+#: ../wlx/gtksourceview/src/gtksourceview.c:600
+msgid "Highlight Line"
+msgstr "Подсветка строки"
+
+#: ../wlx/gtksourceview/src/gtksourceview.c:601
+msgid "Wrap Line"
+msgstr "Разрывы"
+
+#: ../wlx/sqlview_qt/src/plugin.cpp:25
+msgid "base not valid!"
+msgstr ""
+
+#: ../wlx/sqlview_qt/src/plugin.cpp:143
+msgid "Failed to fetch list of tables. Maybe DB is locked?"
+msgstr ""
+
+#: ../wlx/gtkimgview/src/gtkimgview.c:273
+msgid "Play Animation"
+msgstr "Воспроизвести анимацию"
+
+#: ../wlx/gtkimgview/src/gtkimgview.c:278
+msgid "Stop Animation"
+msgstr "Остановить анимацию"
+
+#: ../wlx/jsonview_gtk2/src/plugin.c:64 ../wlx/jsonview_qt/src/plugin.cpp:57
+#: ../wlx/jsonview_qt/src/plugin.cpp:160
+msgid "Object"
+msgstr ""
+
+#: ../wlx/jsonview_gtk2/src/plugin.c:70 ../wlx/jsonview_qt/src/plugin.cpp:64
+#: ../wlx/jsonview_qt/src/plugin.cpp:165
+msgid "Array"
+msgstr ""
+
+#: ../wlx/jsonview_gtk2/src/plugin.c:78 ../wlx/jsonview_qt/src/plugin.cpp:71
+msgid "String"
+msgstr ""
+
+#: ../wlx/jsonview_gtk2/src/plugin.c:85 ../wlx/jsonview_qt/src/plugin.cpp:83
+msgid "Integer"
+msgstr ""
+
+#: ../wlx/jsonview_gtk2/src/plugin.c:92 ../wlx/jsonview_qt/src/plugin.cpp:88
+msgid "Double"
+msgstr ""
+
+#: ../wlx/jsonview_gtk2/src/plugin.c:96 ../wlx/jsonview_qt/src/plugin.cpp:101
+msgid "True"
+msgstr ""
+
+#: ../wlx/jsonview_gtk2/src/plugin.c:96 ../wlx/jsonview_qt/src/plugin.cpp:103
+msgid "False"
+msgstr ""
+
+#: ../wlx/jsonview_gtk2/src/plugin.c:99 ../wlx/jsonview_qt/src/plugin.cpp:98
+msgid "Boolean"
+msgstr ""
+
+#: ../wlx/jsonview_gtk2/src/plugin.c:102 ../wlx/jsonview_qt/src/plugin.cpp:116
+msgid "Undefined"
+msgstr ""
+
+#: ../wlx/jsonview_gtk2/src/plugin.c:107 ../wlx/jsonview_qt/src/plugin.cpp:110
+msgid "Null"
+msgstr ""
+
+#: ../wlx/jsonview_gtk2/src/plugin.c:164 ../wlx/jsonview_gtk2/src/plugin.c:261
+#: ../wlx/jsonview_qt/src/plugin.cpp:156
+msgid "Root"
+msgstr ""
+
+#: ../wlx/jsonview_gtk2/src/plugin.c:183 ../wlx/jsonview_qt/src/plugin.cpp:183
+msgid "Node"
+msgstr ""
+
+#: ../wlx/jsonview_gtk2/src/plugin.c:195 ../wlx/jsonview_qt/src/plugin.cpp:183
+msgid "Value"
+msgstr ""
+
+#: ../wlx/jsonview_gtk2/src/plugin.c:207 ../wlx/jsonview_qt/src/plugin.cpp:183
+msgid "Type"
+msgstr ""
+
+#: ../wlx/qmediaplayer_qt/src/plugin.cpp:49
+msgid "Artist"
+msgstr ""
+
+#: ../wlx/qmediaplayer_qt/src/plugin.cpp:51
+msgid "Album"
+msgstr ""
+
+#: ../wlx/qmediaplayer_qt/src/plugin.cpp:52
+msgid "Track Number"
+msgstr ""
+
+#: ../wlx/qmediaplayer_qt/src/plugin.cpp:53
+msgid "Album Artist"
+msgstr ""
+
+#: ../wlx/qmediaplayer_qt/src/plugin.cpp:55
+msgid "Composer"
+msgstr ""
+
+#: ../wlx/qmediaplayer_qt/src/plugin.cpp:56
+msgid "Lead Performer"
+msgstr ""
+
+#: ../wlx/qmediaplayer_qt/src/plugin.cpp:57
+msgid "Publisher"
+msgstr ""
+
+#: ../wlx/qmediaplayer_qt/src/plugin.cpp:58
+msgid "Genre"
+msgstr ""
+
+#: ../wlx/qmediaplayer_qt/src/plugin.cpp:59
+msgid "Duration"
+msgstr ""
+
+#: ../wlx/qmediaplayer_qt/src/plugin.cpp:60
+msgid "Description"
+msgstr ""
+
+#: ../wlx/qmediaplayer_qt/src/plugin.cpp:61
+msgid "Copyright"
+msgstr ""
+
+#: ../wlx/qmediaplayer_qt/src/plugin.cpp:62
+msgid "Comment"
+msgstr ""
+
+#: ../wlx/qmediaplayer_qt/src/plugin.cpp:63
+msgid "Resolution"
+msgstr ""
+
+#: ../wlx/qmediaplayer_qt/src/plugin.cpp:64
+msgid "Media Type"
+msgstr ""
+
+#: ../wlx/qmediaplayer_qt/src/plugin.cpp:65
+msgid "Video Codec"
+msgstr ""
+
+#: ../wlx/qmediaplayer_qt/src/plugin.cpp:66
+msgid "Video FrameRate"
+msgstr ""
+
+#: ../wlx/qmediaplayer_qt/src/plugin.cpp:67
+msgid "Video BitRate"
+msgstr ""
+
+#: ../wlx/qmediaplayer_qt/src/plugin.cpp:68
+msgid "Audio Codec"
+msgstr ""
+
+#: ../wlx/qmediaplayer_qt/src/plugin.cpp:69
+msgid "Audio BitRate"
+msgstr ""
+
+#: ../wlx/qmediaplayer_qt/src/plugin.cpp:70
+msgid "Date"
+msgstr ""
+
+#: ../wlx/qmediaplayer_qt/src/plugin.cpp:448
+#: ../wlx/qmediaplayer_qt/src/plugin.cpp:508
+#, c-format
+msgid "%'d bps"
+msgstr ""
+
+#: ../wlx/fontview_qt/src/plugin.cpp:16
+msgid "the quick brown fox jumps over the lazy dog"
+msgstr "съешь ещё этих мягких французских булок да выпей чаю, belzebub"
+
+#: ../wlx/fontview_qt/src/plugin.cpp:36
+msgid "Bold"
+msgstr "Жирный"
+
+#: ../wlx/fontview_qt/src/plugin.cpp:37
+msgid "Italic"
+msgstr "Курсив"
+
+#: ../wdx/fewfiles/src/plugin.c:44
+#, c-format
+msgid "Permission denied"
+msgstr "Доступ запрещен"
+
+#: ../wdx/fewfiles/src/plugin.c:74
+#, c-format
+msgid "Empty directory"
+msgstr "Пустой каталог"
+
+#: ../wfx/trash_crap/src/plugin.c:120
+#, c-format
+msgid "Restore %s from trash?"
+msgstr "Восстановить %s из корзины?"
+
+#: ../wfx/trash_crap/src/plugin.c:135
+msgid "Already exists, overwrite?"
+msgstr "Уже существует. Перезаписать?"
+
+#: ../wfx/trash_crap/src/plugin.c:153 ../wfx/trash_crap/src/plugin.c:185
+msgid "Failed to get information about the removed object."
+msgstr "Не удалось получить информацию об удаленном объекте."
+
+#: ../wfx/trash_crap/src/plugin.c:168
+msgid "Original Path:"
+msgstr "Оригинальный путь:"
+
+#: ../wfx/trash_crap/src/plugin.c:169
+msgid "Deletion Date:"
+msgstr "Дата удаления:"
+
+#: ../wfx/trash_crap/src/plugin.c:177 ../wfx/trash_crap/src/plugin.c:178
+#: ../wfx/trash_crap/src/plugin.c:179 ../wfx/trash_crap/src/plugin.c:180
+#: ../wfx/trash_crap/src/plugin.c:181 ../wfx/trash_crap/src/plugin.c:182
+#: ../wfx/trash_crap/src/plugin.c:183 ../wfx/trash_crap/src/plugin.c:184
+msgid "Unknown"
+msgstr "Неизвесто"
+
+#: ../wfx/trash_crap/src/plugin.c:560
+msgid "Path"
+msgstr "Путь"
+
+#: ../wfx/trash_crap/src/plugin.c:568
+msgid "Trash (WFX)"
+msgstr "Корзина (WFX)"
+
+#: ../dsx/git_untracked/src/plugin.c:57 ../dsx/lslocks/src/plugin.c:58
+#: ../dsx/git_ignored/src/plugin.c:57 ../dsx/git_modified/src/plugin.c:58
+msgid "failed to launch command"
+msgstr "не удалось выполнить команду"
+
+#: ../dsx/git_untracked/src/plugin.c:60
+#: ../dsx/tracker_textsearch/src/plugin.c:84
+#: ../dsx/recollq_crap/src/plugin.c:108 ../dsx/locate_crap/src/plugin.c:134
+#: ../dsx/gtkrecent/src/plugin.c:56 ../dsx/lslocks/src/plugin.c:61
+#: ../dsx/tracker3_crap/src/plugin.c:104 ../dsx/git_ignored/src/plugin.c:60
+#: ../dsx/git_modified/src/plugin.c:61
+msgid "not found"
+msgstr "не найдено"
+
+#: ../dsx/recollq_crap/src/plugin.c:79 ../dsx/tracker3_crap/src/plugin.c:78
+msgid "the search text was not specified"
+msgstr "искомый текст не указан"
