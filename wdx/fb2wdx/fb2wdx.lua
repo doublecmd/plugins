@@ -1,5 +1,5 @@
 -- fb2wdx.lua (cross-platform)
--- 2026.05.30
+-- 2026.06.12
 -- Для автодетекта как UTF-8 without BOM --
 
 local r, zip = pcall(require, 'zip')
@@ -387,6 +387,7 @@ function GetFullNames(s, t)
   s = GetTagData(s, 'title-info')
   local n1, n2, tp, an
   local ns = ''
+  local ib = 0
   local n3 = 1
   while true do
     n1 = string.find(s, '<' .. t .. '>', n3, true)
@@ -394,12 +395,17 @@ function GetFullNames(s, t)
     n2 = string.find(s, '</' .. t .. '>', n1, true)
     tp = string.sub(s, n1, n2)
     ns = ns .. ', '
+    ib = 0
     an = string.match(tp, '<first%-name>([^<]+)</first%-name>')
-    if an ~= nil then ns = ns .. ' ' .. an end
+    if an ~= nil then ns = ns .. ' ' .. an else ib = 1 end
     an = string.match(tp, '<middle%-name>([^<]+)</middle%-name>')
     if an ~= nil then ns = ns .. ' ' .. an end
     an = string.match(tp, '<last%-name>([^<]+)</last%-name>')
-    if an ~= nil then ns = ns .. ' ' .. an end
+    if an ~= nil then ns = ns .. ' ' .. an else ib = ib + 1 end
+    if ib == 2 then
+      an = string.match(tp, '<nickname>([^<]+)</nickname>')
+      if an ~= nil then ns = ns .. ' ' .. an end
+    end
     n3 = n2
   end
   ns = string.gsub(ns, '  +', ' ')
