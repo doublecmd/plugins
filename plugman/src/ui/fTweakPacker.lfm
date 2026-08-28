@@ -1,0 +1,56 @@
+object frmTweakPacker: TfrmTweakPacker
+  Left = 200
+  Height = 520
+  Top = 100
+  Width = 480
+  Caption = 'Tweak Packer Plugin'
+  ClientHeight = 520
+  ClientWidth = 480
+  OnCreate = FormCreate
+  Position = poScreenCenter
+  LCLVersion = '4.8.0.0'
+  object edtExts: TEdit
+    Left = 8
+    Height = 28
+    Top = 8
+    Width = 464
+    TabOrder = 0
+  end
+  object pnlFlags: TPanel
+    Left = 8
+    Height = 320
+    Top = 136
+    Width = 464
+    BevelOuter = bvNone
+    ClientHeight = 320
+    ClientWidth = 464
+    TabOrder = 1
+    object lblFlags: TLabel
+      Left = 8
+      Height = 15
+      Top = 4
+      Width = 28
+      Caption = 'Flags'
+    end
+  end
+  object btnOk: TButton
+    Left = 280
+    Height = 30
+    Top = 472
+    Width = 90
+    Caption = 'OK'
+    Default = True
+    OnClick = btnOkClick
+    TabOrder = 2
+  end
+  object btnCancel: TButton
+    Left = 378
+    Height = 30
+    Top = 472
+    Width = 90
+    Cancel = True
+    Caption = 'Cancel'
+    ModalResult = 2
+    TabOrder = 3
+  end
+end

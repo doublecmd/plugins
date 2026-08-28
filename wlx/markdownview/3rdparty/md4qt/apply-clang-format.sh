@@ -1,0 +1,17 @@
+clang-format --style=file -i --sort-includes src/*
+clang-format --style=file -i --sort-includes tests/quick/*.cpp
+clang-format --style=file -i --sort-includes tests/utils/entity/*.cpp
+clang-format --style=file -i --sort-includes tests/md_benchmark/*.cpp
+clang-format --style=file -i --sort-includes tests/auto/algo/*.cpp
+clang-format --style=file -i --sort-includes tests/auto/bench/*.cpp
+clang-format --style=file -i --sort-includes tests/auto/commonmark/*.cpp
+clang-format --style=file -i --sort-includes tests/auto/commonmark/*.h
+clang-format --style=file -i --sort-includes tests/auto/gfm/*.cpp
+clang-format --style=file -i --sort-includes tests/auto/html/*.cpp
+clang-format --style=file -i --sort-includes tests/auto/commonmark/*.cpp
+clang-format --style=file -i --sort-includes tests/auto/poscache/*.cpp
+clang-format --style=file -i --sort-includes tests/auto/test_parser/*.cpp
+clang-format --style=file -i --sort-includes tests/auto/test_funcs/*.cpp
+clang-format --style=file -i --sort-includes tests/auto/plugins/yaml/*.cpp
+clang-format --style=file -i --sort-includes utils/md2html/*.cpp
+clang-format --style=file -i --sort-includes utils/md2qdoc/*.cpp

@@ -1,0 +1,30 @@
+{
+  "htmlLabels": false,
+  "flowchart": {
+    "htmlLabels": false
+  },
+  "sequence": {
+    "htmlLabels": false
+  },
+  "gantt": {
+    "htmlLabels": false
+  },
+  "journey": {
+    "htmlLabels": false
+  },
+  "class": {
+    "htmlLabels": false
+  },
+  "state": {
+    "htmlLabels": false
+  },
+  "er": {
+    "htmlLabels": false
+  },
+  "pie": {
+    "htmlLabels": false
+  },
+  "c4": {
+    "htmlLabels": false
+  }
+}

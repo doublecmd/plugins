@@ -289,7 +289,7 @@ char* CompressionNameStr={"Uncompressed|CCITT 1D|T4/Group 3 Fax|T6/Group 4 Fax|L
   "Microsoft Document Imaging (MDI) Binary Level Codec|Microsoft Document Imaging (MDI) Progressive Transform Codec|Microsoft Document Imaging (MDI) Vector|ESRI Lerc" \
   "Lossy JPEG|LZMA2|Zstd|WebP|PNG|JPEG XR|Kodak DCR Compressed|Pentax PEF Compressed|UNKNOWN"};
 
-char* strlcpy(char* dst,const char* src,int maxlen)     // This function assumes there is room for maxlen characters
+char* exif_strlcpy(char* dst,const char* src,int maxlen)     // This function assumes there is room for maxlen characters
 {														//  + one space for the null character
 	if ((int)strlen(src)>=maxlen) {
 		strncpy(dst,src,maxlen);
@@ -314,7 +314,7 @@ static char* itoa(int value, char* str, int base)
 
 int DCPCALL ContentGetDetectString(char* DetectString,int maxlen)
 {
-	strlcpy(DetectString,_detectstring,maxlen);
+	exif_strlcpy(DetectString,_detectstring,maxlen);
 	return 0;
 }
 
@@ -325,7 +325,7 @@ int DCPCALL ContentGetSupportedField(int FieldIndex,char* FieldName,char* Units,
 
 	if (FieldIndex<0 || FieldIndex>=fieldcount)
 		return ft_nomorefields;
-	strlcpy(FieldName,fieldnames[FieldIndex],maxlen-1);
+	exif_strlcpy(FieldName,fieldnames[FieldIndex],maxlen-1);
 	Units[0]=0;
 
 	switch (FieldIndex){
@@ -373,7 +373,7 @@ int DCPCALL ContentGetSupportedField(int FieldIndex,char* FieldName,char* Units,
 
 
 	if(UnitsStrPointer != NULL)
-        strlcpy(Units,UnitsStrPointer,maxlen-1);
+        exif_strlcpy(Units,UnitsStrPointer,maxlen-1);
 
 	return fieldtypes[FieldIndex];
 }
@@ -663,7 +663,7 @@ double ParseGps(char* data,int datalen,int makernoteoffset,int FieldIndex,BOOL M
 		// GPS date stamp is stored as 11 character string
 		char* pcharvalue=data+tagdataoffset;
 		if (pcharvalue[0]>='0' && pcharvalue[0]<='9')
-			strlcpy(bufval,pcharvalue,11);
+			exif_strlcpy(bufval,pcharvalue,11);
 		return 0;
 	}
 	return 1e100;
@@ -754,7 +754,7 @@ int CanonMakerNote(char* data,int datalen,int makernoteoffset,int FieldIndex,BOO
 		return (unsigned short)get2bytes(data+tagdataoffset+2*offset,MotorolaEndian);
 	}
 	else if(tagnum==6 || tagnum==7 || tagnum==9){			// ASCII string
-		strlcpy(bufval,data+tagdataoffset,32);
+		exif_strlcpy(bufval,data+tagdataoffset,32);
         return 0;
 	}
 	else if (tagnum==8 || tagnum==12){						// numeric value
@@ -901,7 +901,7 @@ BOOL ParseTiffFile(int f,char* data,int datalen,int TagNeeded,int TagNeeded2,int
 			tagtype=tagtype_pchar;
 			switch(tagfound) {
 			case 0x9000:  //exif version
-				strlcpy(bufval,data+tagdataoffset,4);
+				exif_strlcpy(bufval,data+tagdataoffset,4);
 				break;
 			case 0x9101:  //ComponentsConfiguration
 				if (data[tagdataoffset]=='4')
@@ -962,7 +962,7 @@ BOOL ParseTiffFile(int f,char* data,int datalen,int TagNeeded,int TagNeeded2,int
 				break;
 			default:
 				l=min(sizeof(bufval)-2,tagnumelements);
-				strlcpy(bufval,data+tagdataoffset,l);
+				exif_strlcpy(bufval,data+tagdataoffset,l);
 				bufval[l+1]=0;
 			}
 		}
@@ -1014,7 +1014,7 @@ BOOL ParseTiffFile(int f,char* data,int datalen,int TagNeeded,int TagNeeded2,int
 //			if (unicode)
 //				MultiByteToWideChar(CP_ACP,0,bufval,-1,(WCHAR*)((char*)FieldValue+sizeof(double)),maxlen-sizeof(double));
 //			else
-				strlcpy((char*)FieldValue+sizeof(double),bufval,maxlen-sizeof(double));
+				exif_strlcpy((char*)FieldValue+sizeof(double),bufval,maxlen-sizeof(double));
 		} else if (TagNeeded==0x9202 || TagNeeded==0x9205) {
 			// https://www.media.mit.edu/pia/Research/deepview/exif.html
 			// The actual aperture value of lens when the image was taken. To convert this value to ordinary F-number(F-stop),
@@ -1040,7 +1040,7 @@ BOOL ParseTiffFile(int f,char* data,int datalen,int TagNeeded,int TagNeeded2,int
 		switch(tagfound) {
 		case 0x8822:  // ExposureProgram
 			if (numvalue>8) numvalue=0;
-			strlcpy((char*)FieldValue,ExposureProgramUnits[numvalue],maxlen-1);
+			exif_strlcpy((char*)FieldValue,ExposureProgramUnits[numvalue],maxlen-1);
 			break;
 		case 0x9208:// LightSource     - changed to respond to the corrected values fixed after version 1.4
 			if (numvalue<=4)
@@ -1053,7 +1053,7 @@ BOOL ParseTiffFile(int f,char* data,int datalen,int TagNeeded,int TagNeeded2,int
 				nr = 20;
 			else
 				nr = 0;
-			strlcpy((char*)FieldValue,LightSourceUnits[nr],maxlen-1);
+			exif_strlcpy((char*)FieldValue,LightSourceUnits[nr],maxlen-1);
 			break;
 		case 0x9209: // Flash
 			numvalue&=0x59; // ignore some flags   - There was a bug here in version 1.4 old value was 0x55
@@ -1073,92 +1073,92 @@ BOOL ParseTiffFile(int f,char* data,int datalen,int TagNeeded,int TagNeeded2,int
 				nr=1;
 			else
 				nr=0;
-			strlcpy((char*)FieldValue,FlashUnits[nr],maxlen-1);
+			exif_strlcpy((char*)FieldValue,FlashUnits[nr],maxlen-1);
 			break;
 		case 0x9207: //MeteringMode
 			if (numvalue==255)
 				numvalue = 7;
 			else if (numvalue>7)
 				numvalue=7;
-			strlcpy((char*)FieldValue,MeteringModeUnits[numvalue],maxlen-1);
+			exif_strlcpy((char*)FieldValue,MeteringModeUnits[numvalue],maxlen-1);
 			break;
 		case 0x112:  // Orientation
 			if (numvalue>8) numvalue=0;
-			strlcpy((char*)FieldValue,OrientationUnits[numvalue],maxlen-1);
+			exif_strlcpy((char*)FieldValue,OrientationUnits[numvalue],maxlen-1);
 			break;
 		case 0x128: // Resolution Unit
 			if (numvalue==3)
 				numvalue=1;
 			else
 				numvalue=0;
-			strlcpy((char*)FieldValue,ResolutionUnits[numvalue],maxlen-1);
+			exif_strlcpy((char*)FieldValue,ResolutionUnits[numvalue],maxlen-1);
 			break;
 		case 0x213:      // YCbCrPositioning
 		    if (numvalue==2)
 				numvalue=1;
 			else
 				numvalue=0;
-			strlcpy((char*)FieldValue,YCbCrUnits[numvalue],maxlen-1);
+			exif_strlcpy((char*)FieldValue,YCbCrUnits[numvalue],maxlen-1);
 			break;
 		case 0xA217:		//Sensing Method
 			if (numvalue<=0 || numvalue==6 || numvalue>8 )
 				numvalue=0;
 			else
 				numvalue--;
-			strlcpy((char*)FieldValue,SensingMethodUnits[numvalue],maxlen-1);
+			exif_strlcpy((char*)FieldValue,SensingMethodUnits[numvalue],maxlen-1);
 			break;
 		case 0xA402:		//Exposure Mode
 			if (numvalue<0 || numvalue>2  )
 				numvalue=0;
-			strlcpy((char*)FieldValue,ExposureModeUnits[numvalue],maxlen-1);
+			exif_strlcpy((char*)FieldValue,ExposureModeUnits[numvalue],maxlen-1);
 			break;
 		case 0xA403:		//White Balance
 			if (numvalue<0 || numvalue>1 )
 				numvalue=0;
-			strlcpy((char*)FieldValue,WhiteBalanceUnits[numvalue],maxlen-1);
+			exif_strlcpy((char*)FieldValue,WhiteBalanceUnits[numvalue],maxlen-1);
 			break;
 		case 0xA406:		//Scene Capture
 			if (numvalue<0 || numvalue>3 )
 				numvalue=0;
-			strlcpy((char*)FieldValue,SceneCaptureUnits[numvalue],maxlen-1);
+			exif_strlcpy((char*)FieldValue,SceneCaptureUnits[numvalue],maxlen-1);
 			break;
 		case 0xA407:		//Gain Control
 			if (numvalue<0 || numvalue>4 )
 				numvalue=0;
-			strlcpy((char*)FieldValue,GainControlUnits[numvalue],maxlen-1);
+			exif_strlcpy((char*)FieldValue,GainControlUnits[numvalue],maxlen-1);
 			break;
 		case 0xA408:		//Contrast
 			if (numvalue<0 || numvalue>2 )
 				numvalue=0;
-			strlcpy((char*)FieldValue,ContrastUnits[numvalue],maxlen-1);
+			exif_strlcpy((char*)FieldValue,ContrastUnits[numvalue],maxlen-1);
 			break;
 		case 0xA409:		//Saturation
 			if (numvalue<0 || numvalue>2 )
 				numvalue=0;
-			strlcpy((char*)FieldValue,SaturationUnits[numvalue],maxlen-1);
+			exif_strlcpy((char*)FieldValue,SaturationUnits[numvalue],maxlen-1);
 			break;
 		case 0xA40A:		//Sharpness
 			if (numvalue<0 || numvalue>2 )
 				numvalue=0;
-			strlcpy((char*)FieldValue,SharpnessUnits[numvalue],maxlen-1);
+			exif_strlcpy((char*)FieldValue,SharpnessUnits[numvalue],maxlen-1);
 			break;
 		case 0xA40C:		//SubjectDistance
 			if (numvalue<0 || numvalue>3 )
 				numvalue=0;
-			strlcpy((char*)FieldValue,SubjectDistanceUnits[numvalue],maxlen-1);
+			exif_strlcpy((char*)FieldValue,SubjectDistanceUnits[numvalue],maxlen-1);
 			break;
 		case 0x0103:
 			found=false;
 			for (j=0;j<COUNTOF(CompressionNr);j++)
 			{
 				if (CompressionNr[j]==numvalue) {
-					strlcpy((char*)FieldValue,CompressionName[j],maxlen-1);
+					exif_strlcpy((char*)FieldValue,CompressionName[j],maxlen-1);
 					found=true;
 					break;
 				}
 			}
 			if (!found) {
-				strlcpy((char*)FieldValue,CompressionName[COUNTOF(CompressionNr)],maxlen-1);
+				exif_strlcpy((char*)FieldValue,CompressionName[COUNTOF(CompressionNr)],maxlen-1);
 			}
 			break;		
 		case 0x927C:		//MakerNote
@@ -1167,39 +1167,39 @@ BOOL ParseTiffFile(int f,char* data,int datalen,int TagNeeded,int TagNeeded2,int
 					numvalue--;
 					if (numvalue<0 || numvalue>1)
 						numvalue=1;
-					strlcpy((char*)FieldValue,CanonMacroModeUnits[numvalue],maxlen-1);
+					exif_strlcpy((char*)FieldValue,CanonMacroModeUnits[numvalue],maxlen-1);
 					break;
 				case canon_start+1:					// Flash mode
 					if(numvalue==16)
 						numvalue=7;
 					if(numvalue<0 || numvalue>7)
 						numvalue=1;
-					strlcpy((char*)FieldValue,CanonFlashModeUnits[numvalue],maxlen-1);
+					exif_strlcpy((char*)FieldValue,CanonFlashModeUnits[numvalue],maxlen-1);
 					break;
 				case canon_start+2:					// Continuous Mode
 					if(numvalue<0 || numvalue>1)
 						numvalue=0;
-					strlcpy((char*)FieldValue,CanonContinousUnits[numvalue],maxlen-1);
+					exif_strlcpy((char*)FieldValue,CanonContinousUnits[numvalue],maxlen-1);
 					break;
 				case canon_start+3:			// Focus Mode
 					if(numvalue<0 || numvalue>6)
 						numvalue=0;
-					strlcpy((char*)FieldValue,CanonFocusModeUnits[numvalue],maxlen-1);
+					exif_strlcpy((char*)FieldValue,CanonFocusModeUnits[numvalue],maxlen-1);
 					break;
 				case canon_start+4:			// Image Size
 					if(numvalue<0 || numvalue>2)
 						numvalue=0;
-					strlcpy((char*)FieldValue,CanonImageSizeUnits[numvalue],maxlen-1);
+					exif_strlcpy((char*)FieldValue,CanonImageSizeUnits[numvalue],maxlen-1);
 					break;
 				case canon_start+5:			// Easy shooting
 					if(numvalue<0 || numvalue>11)
 						numvalue=0;
-					strlcpy((char*)FieldValue,CanonEasyShootingUnits[numvalue],maxlen-1);
+					exif_strlcpy((char*)FieldValue,CanonEasyShootingUnits[numvalue],maxlen-1);
 					break;
 				case canon_start+6:			// Digital Zoom
 					if(numvalue<0 || numvalue>2)
 						numvalue=0;
-					strlcpy((char*)FieldValue,CanonDigitalZoomUnits[numvalue],maxlen-1);
+					exif_strlcpy((char*)FieldValue,CanonDigitalZoomUnits[numvalue],maxlen-1);
 					break;
 				case canon_start+7:		// Contrast
 				case canon_start+8:		// Saturation
@@ -1208,21 +1208,21 @@ BOOL ParseTiffFile(int f,char* data,int datalen,int TagNeeded,int TagNeeded2,int
 						numvalue=2;
 					if(numvalue<0 || numvalue>2 )
 						numvalue=0;
-					strlcpy((char*)FieldValue,CanonCSSUnits[numvalue],maxlen-1);
+					exif_strlcpy((char*)FieldValue,CanonCSSUnits[numvalue],maxlen-1);
 					break;
 				case canon_start+10:		// ISO speed
 					if(numvalue>=15 && numvalue<=19)
 						numvalue-=14;
 					else
 						numvalue=0;
-					strlcpy((char*)FieldValue,CanonISOSpeedUnits[numvalue],maxlen-1);
+					exif_strlcpy((char*)FieldValue,CanonISOSpeedUnits[numvalue],maxlen-1);
 					break;
 				case canon_start+11:		// Metering Mode
 					if(numvalue>=3 && numvalue<=5)
 						numvalue-=3;
 					else
 						numvalue=0;
-					strlcpy((char*)FieldValue,CanonMeteringModeUnits[numvalue],maxlen-1);
+					exif_strlcpy((char*)FieldValue,CanonMeteringModeUnits[numvalue],maxlen-1);
 					break;
 				case canon_start+12:		// Focus Type
 					if(numvalue==3)
@@ -1231,29 +1231,29 @@ BOOL ParseTiffFile(int f,char* data,int datalen,int TagNeeded,int TagNeeded2,int
 						numvalue=3;
 					else if (numvalue!=0 && numvalue!=1)
 						numvalue=1;
-					strlcpy((char*)FieldValue,CanonFocusTypeUnits[numvalue],maxlen-1);
+					exif_strlcpy((char*)FieldValue,CanonFocusTypeUnits[numvalue],maxlen-1);
 					break;
 				case canon_start+13:			// Auto Focus Select
 					if(numvalue>=12288 && numvalue<=12292)
 						numvalue-=12288;
 					else
 						numvalue=0;
-					strlcpy((char*)FieldValue,CanonAFSelectUnits[numvalue],maxlen-1);
+					exif_strlcpy((char*)FieldValue,CanonAFSelectUnits[numvalue],maxlen-1);
 					break;
 				case canon_start+14:			// Exposure Mode 
 					if(numvalue>5 || numvalue<0)
 						numvalue=0;
-					strlcpy((char*)FieldValue,CanonExposureModeUnits[numvalue],maxlen-1);				
+					exif_strlcpy((char*)FieldValue,CanonExposureModeUnits[numvalue],maxlen-1);				
 					break;
 				case canon_start+15:			// Flash Activity
 					if(numvalue>1 || numvalue<0)
 						numvalue=0;
-					strlcpy((char*)FieldValue,CanonFlashActivityUnits[numvalue],maxlen-1);				
+					exif_strlcpy((char*)FieldValue,CanonFlashActivityUnits[numvalue],maxlen-1);				
 					break;
 				case canon_start+16:			// White Balance
 					if(numvalue>6 || numvalue<0)
 						numvalue=0;
-					strlcpy((char*)FieldValue,CanonWhiteBalanceUnits[numvalue],maxlen-1);				
+					exif_strlcpy((char*)FieldValue,CanonWhiteBalanceUnits[numvalue],maxlen-1);				
 					break;
 				case canon_start+17:			// Flash bias
 					switch(numvalue){
@@ -1276,18 +1276,18 @@ BOOL ParseTiffFile(int f,char* data,int datalen,int TagNeeded,int TagNeeded2,int
 						case (0x0040): numvalue=16; break;
 						default: numvalue=8;
 					}
-					strlcpy((char*)FieldValue,CanonFlashBiasUnits[numvalue],maxlen-1);				
+					exif_strlcpy((char*)FieldValue,CanonFlashBiasUnits[numvalue],maxlen-1);				
 					break;
 			}
 			break;
  
 		default:
-			strlcpy((char*)FieldValue,pcharvalue,maxlen-1);
+			exif_strlcpy((char*)FieldValue,pcharvalue,maxlen-1);
 		}
 		break;
 	case ft_string:
 		if (tagtype==tagtype_pchar)
-			strlcpy((char*)FieldValue,pcharvalue,maxlen-1);
+			exif_strlcpy((char*)FieldValue,pcharvalue,maxlen-1);
 		else if (tagtype==tagtype_float || tagtype==tagtype_double)
 			sprintf((char*)FieldValue,"%G",doublevalue);
 		else if (tagtype==tagtype_rational) {
@@ -1353,7 +1353,7 @@ int DCPCALL ContentGetValue(char* FileName,int FieldIndex,int UnitIndex,void* Fi
 	   || strcasecmp(p,".raf")==0))
 		return ft_fileerror;
 
-	strlcpy(FileName2,FileName,MAX_PATH-1);
+	exif_strlcpy(FileName2,FileName,MAX_PATH-1);
 	if (strcasecmp(p,".crw")==0)
 	{
 	   strcpy(FileName2+strlen(FileName2)-3,"thm");

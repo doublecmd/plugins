@@ -1,0 +1,10 @@
+@PACKAGE_INIT@
+
+# SPDX-FileCopyrightText: 2022-2024 Igor Mironchik <igor.mironchik@gmail.com>
+# SPDX-License-Identifier: MIT
+
+set( CMAKE_CXX_STANDARD 17 )
+
+set( md4qt_INCLUDE_DIRECTORIES "@CMAKE_INSTALL_PREFIX@/include" )
+
+include( "${CMAKE_CURRENT_LIST_DIR}/md4qt-targets.cmake" )

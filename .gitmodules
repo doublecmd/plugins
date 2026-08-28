@@ -1,0 +1,4 @@
+[submodule "plugin-platform"]
+	path = plugin-platform
+	url = https://github.com/pplupo/doublecmd_plugins
+	branch = plugin-platform

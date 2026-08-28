@@ -1,0 +1,28 @@
+# clatexmath runtime generated files
+macro.txt
+rp.txt
+symbols.txt
+
+# meson
+_build/
+
+#ignore obj
+obj/
+
+#ignore bin
+bin/
+*.cbp
+*.depend
+*.layout
+/CppCheckResults.xml
+.DS_Store
+docs/
+doxyfile
+build/
+src/doc
+src/Doxyfile
+.vscode/
+prebuilt-scripts/
+.idea
+cmake-build-*
+.vs

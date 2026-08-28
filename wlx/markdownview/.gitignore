@@ -1,0 +1,6 @@
+build/
+.qt/
+*.o
+*.a
+*.so
+*.wlx

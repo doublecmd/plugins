@@ -1,0 +1,12 @@
+lib/
+backup/
+*.o
+*.ppu
+*.compiled
+*.exe
+*.res
+plugman
+link*.res
+*.lps
+test/test_core
+test/test_core.o

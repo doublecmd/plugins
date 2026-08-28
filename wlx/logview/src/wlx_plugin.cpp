@@ -15,8 +15,16 @@ QString g_iniPath;
 extern "C" {
 
 EXPORT void DCPCALL ListSetDefaultParams(ListDefaultParamStruct* dps) {
+    // DC's DefaultIniName is always "<config dir>/wlx.ini" -- a name shared
+    // by every WLX plugin that doesn't override it, not something unique to
+    // this one. Keep the directory DC handed us, but pick our own filename
+    // so this plugin doesn't collide with (or share settings with) whatever
+    // other plugin last wrote wlx.ini.
     if (dps) {
-        g_iniPath = QString::fromUtf8(dps->DefaultIniName);
+        QString iniName = QString::fromUtf8(dps->DefaultIniName);
+        int slash = iniName.lastIndexOf('/');
+        QString dir = slash < 0 ? QStringLiteral(".") : iniName.left(slash);
+        g_iniPath = dir + QStringLiteral("/logview.ini");
     }
 }
 

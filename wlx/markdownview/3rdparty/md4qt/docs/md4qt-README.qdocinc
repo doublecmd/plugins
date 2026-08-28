@@ -1,0 +1,295 @@
+\c {md4qt} is a static C++ library for parsing Markdown.
+
+\c {md4qt} supports CommonMark 0.31.2 Spec, and some GitHub extensions, such as
+tables, footnotes, tasks lists, strikethroughs, LaTeX Maths injections, GitHub's auto-links.
+
+This library parses Markdown into tree structure.
+
+
+\list
+    \li \l {#Example//home/igor/Work/Archive/repos/md4qt/README.md} {Example}
+    \li \l {#License//home/igor/Work/Archive/repos/md4qt/README.md} {License}
+    \li \l {#Benchmark//home/igor/Work/Archive/repos/md4qt/README.md} {Benchmark}
+    \li \l {#Playground//home/igor/Work/Archive/repos/md4qt/README.md} {Playground}
+    \li \l {#Release-notes//home/igor/Work/Archive/repos/md4qt/README.md} {Release notes}
+    \li \l {#What-should-I-know-about-links-in-the-document//home/igor/Work/Archive/repos/md4qt/README.md} {What should I know about links in the document?}
+    \li \l {#What-is-the-second-argument-of-MDParserparse//home/igor/Work/Archive/repos/md4qt/README.md} {What is the second argument of \c {MD::Parser::parse()}?}
+    \li \l {#What-is-an-MDAnchor//home/igor/Work/Archive/repos/md4qt/README.md} {What is an \c {MD::Anchor}?}
+    \li \l {#Does-the-library-throw-exceptions//home/igor/Work/Archive/repos/md4qt/README.md} {Does the library throw exceptions?}
+    \li \l {#How-can-I-convert-MDDocument-into-HTML//home/igor/Work/Archive/repos/md4qt/README.md} {How can I convert \c {MD::Document} into \c {HTML}?}
+    \li \l {#How-can-I-obtain-positions-of-blockselements-in-Markdown-file//home/igor/Work/Archive/repos/md4qt/README.md} {How can I obtain positions of blocks/elements in \c {Markdown} file?}
+    \li \l {#How-can-I-easily-traverse-through-the-MDDocument//home/igor/Work/Archive/repos/md4qt/README.md} {How can I easily traverse through the \c {MD::Document}?}
+    \li \l {#Is-it-possible-to-find-Markdown-item-by-its-position//home/igor/Work/Archive/repos/md4qt/README.md} {Is it possible to find \c {Markdown} item by its position?}
+    \li \l {#How-can-I-walk-through-the-document-and-find-all-items-of-given-type//home/igor/Work/Archive/repos/md4qt/README.md} {How can I walk through the document and find all items of given type?}
+    \li \l {#How-can-I-add-and-process-a-custom-user-defined-item-in-MDDocument//home/igor/Work/Archive/repos/md4qt/README.md} {How can I add and process a custom (user-defined) item in \c {MD::Document}?}
+\endlist
+
+\target #Example//home/igor/Work/Archive/repos/md4qt/README.md
+\section1 Example
+
+\code /
+#include <md4qt\1parser.h>
+
+int main()
+{
+    MD::Parser p;
+
+    auto doc = p.parse(QStringLiteral("your_markdown.md"));
+
+    for (auto it = doc->items().cbegin(), last = doc->items().cend(); it != last; ++it) {
+        switch ((*it)->type())
+        {
+        case MD::ItemType::Anchor :
+        {
+            auto a = static_cast<MD::Anchor *> (it->get());
+            qDebug() << a->label();
+        }
+            break;
+
+        default :
+            break;
+        }
+    }
+
+    return 0;
+}
+\endcode
+
+\target #License//home/igor/Work/Archive/repos/md4qt/README.md
+\section1 License
+
+\code /
+\1*
+    SPDX-FileCopyrightText: 2026 Igor Mironchik <igor.mironchik@gmail.com>
+    SPDX-License-Identifier: MIT
+*\1
+\endcode
+
+\target #Benchmark//home/igor/Work/Archive/repos/md4qt/README.md
+\section1 Benchmark
+
+Approximate benchmark with \l {https://github.com/github/cmark-gfm} {cmark-gfm} says,
+that Qt6 version of \c {md4qt} is slower ~8 times.
+But you will get complete C++ tree structure of the Markdown document with all
+major extensions and sugar and cherry on the cake.
+
+
+\table
+
+    \header
+
+        \li Markdown library
+
+        \li Result
+
+    \row
+
+        \li \l {https://github.com/github/cmark-gfm} {cmark-gfm}
+
+        \li ~0.22 ms
+
+    \row
+
+        \li \c {md4qt} with \c {Qt6}
+
+        \li ~1.7 ms
+
+    \row
+
+        \li \c {md4qt} with \c {Qt6} without \c {GitHub} auto-links extension
+
+        \li ~1.2 ms
+
+\endtable
+
+\target #Playground//home/igor/Work/Archive/repos/md4qt/README.md
+\section1 Playground
+
+You can play in action with \c {md4qt} in \l {https://github.com/igormironchik/markdown-tools} {Markdown Tools}. There you can find \c {Markdown} editor/viewer/converter to \c {PDF}.
+
+And \l {https://invent.kde.org/office/klevernotes} {KleverNotes} from \c {KDE} uses \c {md4qt} too.
+
+\target #Release-notes//home/igor/Work/Archive/repos/md4qt/README.md
+\section1 Release notes
+
+
+\list
+    \li Note that version \b{5.0.0} is API incompatible with \b{4.x.x}. Version \b{5.0.0} was
+        fully refactored for better performance and be more user-friendly.
+    \li Note that version \b{4.0.0} is API incompatible with \b{3.0.0}. In version \b{4.0.0} were
+        changed rules with spaces, this version fully supports CommonMark standard in this question.
+        Methods \c {isSpaceBefore()}, \c {isSpaceAfter()} were removed, and spaces are presented as in
+        Markdown, so keep it in mind.
+\endlist
+
+\target #What-should-I-know-about-links-in-the-document//home/igor/Work/Archive/repos/md4qt/README.md
+\section1 What should I know about links in the document?
+
+
+\list
+    \li In some cases in Markdown link's URL is something document related. So, when
+        you got a \c {MD::Link} in the document check if the labelled links of the
+        document contains key with URL in the link, and if so, use URL from
+        labelled links, look:
+
+        \code /
+        MD::Link *item = ...;
+        
+        QString url = item->url();
+        
+        const auto it = doc->labeledLinks().find(url);
+        
+        if (it != doc->labeledLinks().cend()) {
+            url = it.value()->url();
+        }
+        \endcode
+
+
+\endlist
+
+\target #What-is-the-second-argument-of-MDParserparse//home/igor/Work/Archive/repos/md4qt/README.md
+\section1 What is the second argument of \c {MD::Parser::parse()}?
+
+
+\list
+    \li Second argument of \c {MD::Parser::parse()} is a flag that tells the
+        parser to process Markdown files recursively or not. If parsing is recursive
+        then if in the targeted Markdown file exist links to other Markdown files,
+        then they will be parsed too and will exist in the resulting document.
+\endlist
+
+\target #What-is-an-MDAnchor//home/igor/Work/Archive/repos/md4qt/README.md
+\section1 What is an \c {MD::Anchor}?
+
+
+\list
+    \li As \c {md4qt} supports recursive Markdown parsing, then in the resulting
+        document can be represented more than one Markdown file. Each file in the
+        document starts with \c {MD::Anchor}, it just shows that during traversing through
+        the document you reached new file.
+\endlist
+
+\target #Does-the-library-throw-exceptions//home/igor/Work/Archive/repos/md4qt/README.md
+\section1 Does the library throw exceptions?
+
+
+\list
+    \li No. This library doesn't use exceptions. Any text is a valid Markdown, so I
+        don't need to inform user about errors. Qt itself doesn't use exceptions either.
+        So you can catch only standard C++ exceptions, like \c {std::bad_alloc}, for
+        example.
+\endlist
+
+\target #How-can-I-convert-MDDocument-into-HTML//home/igor/Work/Archive/repos/md4qt/README.md
+\section1 How can I convert \c {MD::Document} into \c {HTML}?
+
+
+\list
+    \li In version \c {2.0.5} were made commits with implementation of
+        \c {MD::toHtml()} function. You can do the following:
+
+        \code /
+        #include <md4qt\1parser.h>
+        #include <md4qt\1html.h>
+        
+        int main()
+        {
+            MD::Parse p;
+        
+            auto doc = p.parse(QStringLiteral("your_markdown.md"));
+        
+            const auto html = MD::toHtml(doc);
+        
+            return 0;
+        }
+        \endcode
+
+
+\endlist
+
+\target #How-can-I-obtain-positions-of-blockselements-in-Markdown-file//home/igor/Work/Archive/repos/md4qt/README.md
+\section1 How can I obtain positions of blocks/elements in \c {Markdown} file?
+
+
+\list
+    \li Done in version \c {2.0.5}. Remember that all positions in \c {md4qt} start with 0,
+        where first symbol on first line will have coordinates \c {(0,0)}. One more important thing is
+        that all ranges of position in \c {md4qt} are given inclusive, that mean that last column
+        of any element will point to the last symbol in this element.
+\endlist
+
+\target #How-can-I-easily-traverse-through-the-MDDocument//home/igor/Work/Archive/repos/md4qt/README.md
+\section1 How can I easily traverse through the \c {MD::Document}?
+
+
+\list
+    \li Since version \c {2.6.0} in \c {visitor.h} header implemented \c {MD::Visitor} interface
+        with which you can easily walk through the document, all you need is implement/override
+        virtual methods to handle that or another element in the document, like:
+
+        \code /
+        \1*!
+         * Handle heading.
+         *
+         * \a h Heading.
+         *\1
+        virtual void onHeading(Heading *h) = 0;
+        \endcode
+
+
+\endlist
+
+\target #Is-it-possible-to-find-Markdown-item-by-its-position//home/igor/Work/Archive/repos/md4qt/README.md
+\section1 Is it possible to find \c {Markdown} item by its position?
+
+
+\list
+    \li Since version \c {3.0.0} was added new structure \c {MD::PosCache}. You can pass
+        \c {MD::Document} into its \c {MD::PosCache::initialize()} method and find first item with all its
+        nested first children by given position with \c {MD::PosCache::findFirstInCache()} method.
+\endlist
+
+\target #How-can-I-walk-through-the-document-and-find-all-items-of-given-type//home/igor/Work/Archive/repos/md4qt/README.md
+\section1 How can I walk through the document and find all items of given type?
+
+
+\list
+    \li Since version \c {3.0.0} was added algorithm \c {MD::forEach()}.
+
+        \code /
+        \1*!
+         * \inheaderfile md4qt\1algo.h
+         *
+         * \brief Calls function for each item in the document with the given type.
+         *
+         * \a types Vector of item's types to be processed.
+         *
+         * \a doc Document.
+         *
+         * \a func Functor object.
+         *
+         * \a maxNestingLevel Maximun nesting level. 0 means infinity, 1 - only top level items...
+         *\1
+        inline void forEach(
+            const QVector<ItemType> &types,
+            QSharedPointer<Document> doc,
+            ItemFunctor func,
+            unsigned int maxNestingLevel = 0);
+        \endcode
+
+
+\endlist
+
+\target #How-can-I-add-and-process-a-custom-user-defined-item-in-MDDocument//home/igor/Work/Archive/repos/md4qt/README.md
+\section1 How can I add and process a custom (user-defined) item in \c {MD::Document}?
+
+
+\list
+    \li Since version \c {3.0.0} in \c {MD::ItemType} enum appeared \c {MD::UserDefined} enumerator.
+        So you can inherit from any \c {MD::Item} class and return from \c {type()} method
+        value greater or equal \c {MD::ItemType::UserData}. To handle user-defined types of
+        items in \c {MD::Visitor} class now exists method \c {void onUserDefined(MD::Item *item)}.
+        So you can handle your custom items and do what you need.
+\endlist
+
+

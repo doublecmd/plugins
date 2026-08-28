@@ -1,0 +1,154 @@
+object frmMain: TfrmMain
+  Left = 120
+  Height = 620
+  Top = 80
+  Width = 980
+  Caption = 'Double Commander Plugin Manager'
+  ClientHeight = 620
+  ClientWidth = 980
+  OnCreate = FormCreate
+  OnShow = FormShow
+  Position = poScreenCenter
+  LCLVersion = '4.8.0.0'
+  object ToolBar: TToolBar
+    Left = 0
+    Height = 30
+    Top = 0
+    Width = 980
+    ButtonHeight = 26
+    ButtonWidth = 70
+    Caption = 'ToolBar'
+    ShowCaptions = True
+    TabOrder = 0
+    object btnInstall: TToolButton
+      Left = 1
+      Height = 26
+      Top = 0
+      Caption = 'Install'
+      OnClick = btnInstallClick
+    end
+    object btnUninstall: TToolButton
+      Left = 72
+      Height = 26
+      Top = 0
+      Caption = 'Uninstall'
+      OnClick = btnUninstallClick
+    end
+    object btnEnable: TToolButton
+      Left = 143
+      Height = 26
+      Top = 0
+      Caption = 'Disable'
+      OnClick = btnEnableClick
+    end
+    object btnMoveUp: TToolButton
+      Left = 214
+      Height = 26
+      Top = 0
+      Caption = 'Up'
+      OnClick = btnMoveUpClick
+    end
+    object btnMoveDown: TToolButton
+      Left = 285
+      Height = 26
+      Top = 0
+      Caption = 'Down'
+      OnClick = btnMoveDownClick
+    end
+    object btnTweak: TToolButton
+      Left = 356
+      Height = 26
+      Top = 0
+      Caption = 'Tweak'
+      OnClick = btnTweakClick
+    end
+    object btnBindUrl: TToolButton
+      Left = 427
+      Height = 26
+      Top = 0
+      Caption = 'Bind URL'
+      OnClick = btnBindUrlClick
+    end
+    object btnCheckUpdate: TToolButton
+      Left = 498
+      Height = 26
+      Top = 0
+      Caption = 'Update'
+      OnClick = btnCheckUpdateClick
+    end
+    object btnRollback: TToolButton
+      Left = 569
+      Height = 26
+      Top = 0
+      Caption = 'Rollback'
+      OnClick = btnRollbackClick
+    end
+    object btnRefresh: TToolButton
+      Left = 640
+      Height = 26
+      Top = 0
+      Caption = 'Refresh'
+      OnClick = btnRefreshClick
+    end
+    object btnSettings: TToolButton
+      Left = 711
+      Height = 26
+      Top = 0
+      Caption = 'Settings'
+      OnClick = btnSettingsClick
+    end
+    object btnConfigure: TToolButton
+      Left = 782
+      Height = 26
+      Top = 0
+      Caption = 'Configure'
+      OnClick = btnConfigureClick
+    end
+  end
+  object lvPlugins: TListView
+    Left = 0
+    Height = 360
+    Top = 30
+    Width = 980
+    Align = alClient
+    Columns = <>
+    ReadOnly = True
+    RowSelect = True
+    TabOrder = 1
+    ViewStyle = vsReport
+    OnSelectItem = lvPluginsSelectItem
+  end
+  object pnlDetail: TPanel
+    Left = 0
+    Height = 200
+    Top = 390
+    Width = 980
+    Align = alBottom
+    BevelOuter = bvNone
+    ClientHeight = 200
+    ClientWidth = 980
+    TabOrder = 2
+    object memDetail: TMemo
+      Left = 0
+      Height = 200
+      Top = 0
+      Width = 980
+      Align = alClient
+      ReadOnly = True
+      ScrollBars = ssAutoVertical
+      TabOrder = 0
+    end
+  end
+  object StatusBar: TStatusBar
+    Left = 0
+    Height = 24
+    Top = 596
+    Width = 980
+    SimplePanel = True
+    TabOrder = 3
+  end
+  object OpenDialog: TOpenDialog
+    Left = 880
+    Top = 48
+  end
+end

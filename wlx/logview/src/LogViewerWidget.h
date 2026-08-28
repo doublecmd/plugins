@@ -2,6 +2,7 @@
 
 #include <QWidget>
 #include <QListView>
+#include <QComboBox>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QDateTimeEdit>
@@ -52,7 +53,7 @@ protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
 
 private slots:
-    void onSearchStartClicked();
+    void executeSearch(bool jumpToNext);
     void onSearchStopClicked();
     void onFollowToggled(bool checked);
     void onFilterModeToggled(bool checked);
@@ -75,12 +76,14 @@ private:
 
     // UI Elements
     QListView *listView;
-    QLineEdit *searchEdit;
-    QPushButton *btnSearchStart;
+    QComboBox *searchComboBox;
+    QPushButton *btnFilter;
+    QPushButton *btnSearchNext;
     QPushButton *btnSearchStop;
     QPushButton *btnClearLog;
     QPushButton *btnExtract;
     QPushButton *btnSettings;
+    QPushButton *btnResetFilter;
     QDateTimeEdit *timeStart;
     QDateTimeEdit *timeEnd;
     QCheckBox *chkFollow;

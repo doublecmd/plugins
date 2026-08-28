@@ -1,0 +1,23 @@
+include($KDE_DOCS/global/qt-module-defaults.qdocconf)
+
+project = md4qt
+description = Static C++ library for parsing Markdown.
+
+documentationinheaders = true
+
+headerdirs += ../src
+sourcedirs += ../src \
+              .
+imagedirs += ..
+
+visibility = protected
+
+navigation.landingpage  = "md4qt"
+navigation.cppclassespage = "md4qt C++ Classes"
+
+outputformats = HTML
+
+depends += \
+    qtcore
+
+tagfile = md4qt.tags

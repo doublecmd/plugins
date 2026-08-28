@@ -1,34 +1,125 @@
 name: build-release
 
 on:
+  # `release` events don't reliably reach Actions on a forked repo (this repo
+  # is a fork of doublecmd/plugins) -- confirmed empirically: two published
+  # releases here, zero release-triggered runs. workflow_dispatch is the
+  # trigger that's actually confirmed to work, so it takes an optional tag
+  # input: leave blank for a plain build-only smoke test, or fill in an
+  # existing release's tag to also upload zips + set its release notes.
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing release tag to upload zips to (leave blank to just build)"
+        required: false
+        type: string
   release:
-    types: [released]
+    # "released" alone excludes pre-releases -- also listen for
+    # "prereleased" since you mark early builds as pre-release. Kept even
+    # though it isn't currently firing, in case GitHub's fork behavior here
+    # changes or this repo stops being treated as a fork.
+    types: [released, prereleased]
 
 concurrency:
   group: ${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   build-lin:
-    runs-on: ubuntu-22.04
+    # noble (24.04), not jammy (22.04): the Qt6/KDE Frameworks 6 plugins
+    # (csvview, dbview, diagramview, kpartview, kate, logview, markdownview,
+    # mdk, mpv_wayland, officeview, structview) need apt packages that
+    # jammy's repos don't carry at all.
+    runs-on: ubuntu-24.04
     steps:
     - name: Install Lazarus
-      run: sudo apt install lazarus
+      run: sudo apt install -y lazarus
 
-    - name: Install GTK library 
-      run: sudo apt install libgtk2.0-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
-    
+    - name: Install GTK2 library (legacy Pascal/Lazarus plugins)
+      run: sudo apt install -y libgtk2.0-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+
+    - name: Install base build tooling (CMake-based plugins)
+      run: sudo apt install -y build-essential cmake ninja-build meson pkg-config git curl wget zlib1g-dev libssl-dev zip
+
+    - name: Install GTK3 + its plugin-specific dependencies
+      run: |
+        sudo apt install -y \
+          libgtk-3-dev \
+          libwebkit2gtk-4.1-dev \
+          libcairomm-1.0-dev \
+          libpangomm-1.4-dev \
+          libfreetype-dev \
+          libfontconfig-dev \
+          librsvg2-dev \
+          libepoxy-dev \
+          libmpv-dev \
+          libxml2-dev
+
+    # qt6-base-dev already ships the QtOpenGLWidgets/QtPrintSupport headers on
+    # noble -- there's no separate -dev package for those modules, only
+    # runtime libqt6*t64 packages, which qt6-base-dev pulls in as deps anyway.
+    - name: Install Qt6 + its plugin-specific dependencies
+      run: |
+        sudo apt install -y \
+          qt6-base-dev \
+          qt6-base-dev-tools \
+          qt6-svg-dev \
+          libqt6opengl6-dev
+
+    - name: Install structview's yaml-cpp dependency
+      run: sudo apt install -y libyaml-cpp-dev
+
+    # Best-effort: KDE Frameworks 6 packaging on a given Ubuntu release can
+    # lag behind Qt6 itself. If these aren't available, kpartview and kate
+    # (the only two plugins that need them) are skipped further down via
+    # `cmake --build . --target <name> || true` rather than failing the
+    # whole workflow.
+    - name: Install KDE Frameworks 6 (kpartview, kate) - best effort
+      continue-on-error: true
+      run: |
+        sudo apt install -y \
+          extra-cmake-modules \
+          libkf6parts-dev \
+          libkf6kio-dev \
+          libkf6coreaddons-dev \
+          libkf6xmlgui-dev \
+          libkf6texteditor-dev \
+          libkf6config-dev
+
     - name: Checkout source
       uses: actions/checkout@v2
 
     - name: Build packages
       run: ./build.sh
 
+    # Resolves to the release tag whichever way we got triggered: the real
+    # tag on a `release` event, or whatever was typed into the manual
+    # workflow_dispatch input. Empty on a plain build-only dispatch run.
+    - name: Determine target release tag
+      id: target
+      run: |
+        if [ "${{ github.event_name }}" = "release" ]; then
+          echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+        else
+          echo "tag=${{ inputs.release_tag }}" >> "$GITHUB_OUTPUT"
+        fi
+
     - name: Upload binaries to release
+      if: steps.target.outputs.tag != ''
       uses: svenstaro/upload-release-action@v2
       with:
-        file: plugins-*.tar.gz
-        tag: ${{ github.ref }}
+        file: "*.zip"
+        tag: ${{ steps.target.outputs.tag }}
         overwrite: true
         file_glob: true
+
+    - name: Set release notes (plugin list, toolkit, docs links)
+      if: steps.target.outputs.tag != ''
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        ./.github/generate_release_notes.sh "$GITHUB_REPOSITORY" "${{ steps.target.outputs.tag }}" > /tmp/notes.md
+        gh release edit "${{ steps.target.outputs.tag }}" --notes-file /tmp/notes.md

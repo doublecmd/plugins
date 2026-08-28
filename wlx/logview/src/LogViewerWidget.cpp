@@ -2,6 +2,7 @@
 #include "LogModel.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QLineEdit>
 #include <QDebug>
 #include <QScrollBar>
 #include <QTimer>
@@ -393,16 +394,17 @@ private:
 LogFilterProxy::LogFilterProxy(QObject *parent)
     : QSortFilterProxyModel(parent) {}
 
+// beginFilterChange()/endFilterChange() are Qt 6.7+ only (the runner's
+// qt6-base-dev ships 6.4.2) -- invalidateFilter() is the pre-6.7 equivalent
+// for telling the proxy its filtering criteria changed.
 void LogFilterProxy::setRegexFilterActive(bool active) {
-    beginFilterChange();
     m_regexActive = active;
-    endFilterChange();
+    invalidateFilter();
 }
 
 void LogFilterProxy::setTimeFilterActive(bool active) {
-    beginFilterChange();
     m_timeActive = active;
-    endFilterChange();
+    invalidateFilter();
 }
 
 void LogFilterProxy::setTimeRange(const QDateTime &start, const QDateTime &end) {
@@ -411,15 +413,13 @@ void LogFilterProxy::setTimeRange(const QDateTime &start, const QDateTime &end) 
         m_timeEnd = end;
         return;
     }
-    beginFilterChange();
     m_timeStart = start;
     m_timeEnd = end;
-    endFilterChange();
+    invalidateFilter();
 }
 
 void LogFilterProxy::refreshFilter() {
-    beginFilterChange();
-    endFilterChange();
+    invalidateFilter();
 }
 
 bool LogFilterProxy::filterAcceptsRow(int sourceRow,
@@ -463,26 +463,38 @@ LogViewerWidget::LogViewerWidget(QWidget *parent)
     // ── Top Header ─────────────────────────────────────────────────────
     QWidget *headerContainer = new QWidget(this);
     QHBoxLayout *headerLayout = new QHBoxLayout(headerContainer);
-    headerLayout->setContentsMargins(4, 4, 4, 4);
-    headerLayout->setSpacing(4);
+    headerLayout->setContentsMargins(2, 2, 2, 2);
+    headerLayout->setSpacing(2);
 
-    searchEdit = new QLineEdit(headerContainer);
-    searchEdit->setPlaceholderText("Regex search...");
-    searchEdit->setClearButtonEnabled(true);
-    headerLayout->addWidget(searchEdit);
+    searchComboBox = new QComboBox(headerContainer);
+    searchComboBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    searchComboBox->setEditable(true);
+    searchComboBox->setInsertPolicy(QComboBox::NoInsert);
+    searchComboBox->lineEdit()->setPlaceholderText("Regex search...");
+    searchComboBox->lineEdit()->setClearButtonEnabled(true);
+    searchComboBox->setToolTip("Regex string to search or filter");
+    headerLayout->addWidget(searchComboBox);
 
-    btnSearchStart = new QPushButton(QString::fromUtf8(u8"\u2315 Search / Next"), headerContainer);
+    btnFilter      = new QPushButton(QString::fromUtf8(u8"\u25BD Filter"), headerContainer);
+    btnFilter->setToolTip("Apply regex as a view filter");
+    btnSearchNext  = new QPushButton(QString::fromUtf8(u8"\u2315 Search / Next"), headerContainer);
+    btnSearchNext->setToolTip("Find the next match for the regex");
     btnSearchStop  = new QPushButton(QString::fromUtf8(u8"\u25A0 Stop"), headerContainer);
     btnSearchStop->setEnabled(false);
-    headerLayout->addWidget(btnSearchStart);
+    btnSearchStop->setToolTip("Stop current search");
+    headerLayout->addWidget(btnFilter);
+    headerLayout->addWidget(btnSearchNext);
     headerLayout->addWidget(btnSearchStop);
 
     timeStart = new QDateTimeEdit(headerContainer);
     timeEnd   = new QDateTimeEdit(headerContainer);
-    timeStart->setFixedWidth(175);
-    timeEnd->setFixedWidth(175);
     timeStart->setDisplayFormat("yyyy-MM-dd HH:mm:ss");
     timeEnd->setDisplayFormat("yyyy-MM-dd HH:mm:ss");
+    int dtWidth = timeStart->fontMetrics().horizontalAdvance("0000-00-00 00:00:00") + 45; // 45px for spinners and padding
+    timeStart->setFixedWidth(dtWidth);
+    timeEnd->setFixedWidth(dtWidth);
+    timeStart->setToolTip("Start time for filtering logs");
+    timeEnd->setToolTip("End time for filtering logs");
 
     headerLayout->addWidget(new QLabel("From:", headerContainer));
     headerLayout->addWidget(timeStart);
@@ -490,23 +502,50 @@ LogViewerWidget::LogViewerWidget(QWidget *parent)
     headerLayout->addWidget(timeEnd);
 
     chkFollow     = new QCheckBox("Follow", headerContainer);
+    chkFollow->setToolTip("Automatically scroll to new lines (tail)");
     chkFilterMode = new QCheckBox("Filter", headerContainer);
+    chkFilterMode->setToolTip("Toggle filter mode");
     btnClearLog   = new QPushButton(QString::fromUtf8(u8"\u239A\uFE0E Clean"), headerContainer);
     btnClearLog->setToolTip("Clean log file (delete all contents, keep the file)");
-    btnExtract    = new QPushButton(QString::fromUtf8(u8"\U0001F5AB Extract..."), headerContainer);
+    btnExtract    = new QPushButton(QString::fromUtf8(u8"\U0001F5AB Extract"), headerContainer);
     btnExtract->setToolTip("Extract selected lines to a new file");
     btnSettings   = new QPushButton(QString::fromUtf8(u8"\u2699 Settings"), headerContainer);
-    headerLayout->addWidget(chkFollow);
+    btnResetFilter = new QPushButton(QString::fromUtf8(u8"\u2716\uFE0E Reset"), headerContainer);
+    btnResetFilter->setToolTip("Reset filter");
+    
     headerLayout->addWidget(chkFilterMode);
-    headerLayout->addWidget(btnClearLog);
+    headerLayout->addWidget(btnResetFilter);
+    headerLayout->addWidget(chkFollow);
     headerLayout->addWidget(btnExtract);
+    headerLayout->addWidget(btnClearLog);
     headerLayout->addWidget(btnSettings);
 
     // Reactive search clearing
-    connect(searchEdit, &QLineEdit::textChanged, this, [this](const QString &text) {
+    connect(searchComboBox->lineEdit(), &QLineEdit::textChanged, this, [this](const QString &text) {
         if (text.isEmpty()) {
-            onSearchStartClicked();
+            executeSearch(false);
         }
+    });
+
+    connect(btnResetFilter, &QPushButton::clicked, this, [this]() {
+        bool b1 = searchComboBox->lineEdit()->blockSignals(true);
+        searchComboBox->lineEdit()->clear();
+        searchComboBox->lineEdit()->blockSignals(b1);
+
+        chkFilterMode->setChecked(false);
+
+        bool b2 = timeStart->blockSignals(true);
+        bool b3 = timeEnd->blockSignals(true);
+        if (model && model->firstTimestamp().isValid()) {
+            timeStart->setDateTime(model->firstTimestamp());
+            timeEnd->setDateTime(model->lastTimestamp());
+        }
+        timeStart->blockSignals(b2);
+        timeEnd->blockSignals(b3);
+
+        filterProxy->setTimeFilterActive(false);
+        filterProxy->refreshFilter();
+        executeSearch(false);
     });
 
     // Normalize height and vertical alignment for all widgets in the header.
@@ -514,12 +553,13 @@ LogViewerWidget::LogViewerWidget(QWidget *parent)
     const int headerHeight = 32;
     
     headerContainer->setStyleSheet(
-        "QPushButton, QLineEdit, QDateTimeEdit { "
-        "  padding: 0px 8px; "
+        "QPushButton, QComboBox, QLineEdit, QDateTimeEdit { "
+        "  padding: 0px 4px; "
         "  margin: 0px; "
+        "  min-width: 0px; "
         "} "
         "QPushButton { text-align: center; } "
-        "QLabel { padding: 0px 4px; }"
+        "QLabel { padding: 0px 2px; }"
     );
 
     // Targeted fixes for buttons that tend to align higher due to symbol metrics
@@ -561,7 +601,7 @@ LogViewerWidget::LogViewerWidget(QWidget *parent)
 
         menu.addSeparator();
 
-        QAction *extractAct = menu.addAction(QString::fromUtf8(u8"\U0001F5AB Extract..."));
+        QAction *extractAct = menu.addAction(QString::fromUtf8(u8"\U0001F5AB Extract"));
         connect(extractAct, &QAction::triggered, this, &LogViewerWidget::extractSelectedLines);
 
         bool hasSelection = !listView->selectionModel()->selectedIndexes().isEmpty();
@@ -614,8 +654,14 @@ LogViewerWidget::LogViewerWidget(QWidget *parent)
     });
 
     // ── Connections ────────────────────────────────────────────────────
-    connect(btnSearchStart, &QPushButton::clicked,
-            this, &LogViewerWidget::onSearchStartClicked);
+    connect(btnFilter, &QPushButton::clicked, this, [this]() {
+        chkFilterMode->setChecked(true);
+        executeSearch(false);
+    });
+    connect(btnSearchNext, &QPushButton::clicked, this, [this]() {
+        chkFollow->setChecked(false);
+        executeSearch(true);
+    });
     connect(btnSearchStop,  &QPushButton::clicked,
             this, &LogViewerWidget::onSearchStopClicked);
     connect(chkFollow, &QCheckBox::toggled,
@@ -652,8 +698,8 @@ LogViewerWidget::~LogViewerWidget() {
 
 bool LogViewerWidget::isTextInputWidget(QWidget *w) const {
     if (!w) return false;
-    if (w == searchEdit || w == timeStart || w == timeEnd) return true;
-    if (searchEdit->isAncestorOf(w)) return true;
+    if (w == searchComboBox || w == searchComboBox->lineEdit() || w == timeStart || w == timeEnd) return true;
+    if (searchComboBox->isAncestorOf(w)) return true;
     if (timeStart->isAncestorOf(w)) return true;
     if (timeEnd->isAncestorOf(w)) return true;
     return false;
@@ -699,8 +745,8 @@ bool LogViewerWidget::eventFilter(QObject *obj, QEvent *event) {
                 // Clicked a text input — let it gain focus naturally
                 m_activeInput = w;
                 // Find the top-level input widget for tracking
-                if (searchEdit->isAncestorOf(w) || w == searchEdit)
-                    m_activeInput = searchEdit;
+                if (searchComboBox->isAncestorOf(w) || w == searchComboBox || w == searchComboBox->lineEdit())
+                    m_activeInput = searchComboBox->lineEdit();
                 else if (timeStart->isAncestorOf(w) || w == timeStart)
                     m_activeInput = timeStart;
                 else if (timeEnd->isAncestorOf(w) || w == timeEnd)
@@ -714,8 +760,8 @@ bool LogViewerWidget::eventFilter(QObject *obj, QEvent *event) {
         } else if (m_isActive && gr.contains(gp)) {
             // Already active, click inside — update input tracking
             if (w && isTextInputWidget(w)) {
-                if (searchEdit->isAncestorOf(w) || w == searchEdit)
-                    m_activeInput = searchEdit;
+                if (searchComboBox->isAncestorOf(w) || w == searchComboBox || w == searchComboBox->lineEdit())
+                    m_activeInput = searchComboBox->lineEdit();
                 else if (timeStart->isAncestorOf(w) || w == timeStart)
                     m_activeInput = timeStart;
                 else if (timeEnd->isAncestorOf(w) || w == timeEnd)
@@ -759,11 +805,10 @@ bool LogViewerWidget::eventFilter(QObject *obj, QEvent *event) {
             return true;
         }
         // Enter in search edit: trigger search, return focus to list
-        if (m_activeInput == searchEdit && (ke->key() == Qt::Key_Return ||
+        if (m_activeInput == searchComboBox->lineEdit() && (ke->key() == Qt::Key_Return ||
                                              ke->key() == Qt::Key_Enter)) {
-            onSearchStartClicked();
-            m_activeInput = nullptr;
-            listView->setFocus(Qt::OtherFocusReason);
+            executeSearch(true);
+            restoreFocusToDC();
             return true;
         }
 
@@ -815,14 +860,14 @@ void LogViewerWidget::loadFile(const QString& filePath) {
 // ─── External search trigger (from ListSearchText) ─────────────────────
 
 void LogViewerWidget::triggerSearch(const QString& searchString, int) {
-    searchEdit->setText(searchString);
-    onSearchStartClicked();
+    searchComboBox->lineEdit()->setText(searchString);
+    executeSearch(true);
 }
 
 // ─── Search ────────────────────────────────────────────────────────────
 
-void LogViewerWidget::onSearchStartClicked() {
-    const QString query = searchEdit->text();
+void LogViewerWidget::executeSearch(bool jumpToNext) {
+    const QString query = searchComboBox->currentText();
 
     if (query != m_lastSearchQuery) {
         m_lastMatchRow = -1;
@@ -834,13 +879,29 @@ void LogViewerWidget::onSearchStartClicked() {
             return;
         }
 
+        // Add to history
+        int existingIndex = searchComboBox->findText(query);
+        if (existingIndex >= 0) {
+            searchComboBox->removeItem(existingIndex);
+        }
+        searchComboBox->insertItem(0, query);
+        searchComboBox->setCurrentIndex(0);
+
         btnSearchStop->setEnabled(true);
         statusLabel->setText("Searching...");
         model->startSearch(query);
         return;
     }
 
-    if (query.isEmpty()) return;
+    if (query.isEmpty() || !jumpToNext) return;
+
+    // Add to history if we select from dropdown and click filter/search
+    int existingIndex = searchComboBox->findText(query);
+    if (existingIndex > 0) {
+        searchComboBox->removeItem(existingIndex);
+        searchComboBox->insertItem(0, query);
+        searchComboBox->setCurrentIndex(0);
+    }
 
     // Same query — jump to next match
     if (model->matchCount() > 0) {
@@ -1054,7 +1115,7 @@ std::vector<HighlightRule> LogViewerWidget::loadHighlightRules() {
     std::vector<HighlightRule> rules;
     QString path = g_iniPath;
     if (path.isEmpty()) {
-        path = QDir::homePath() + "/.config/doublecmd/logviewer.ini";
+        path = QDir::homePath() + "/.config/doublecmd/logview.ini";
     }
 
     QSettings settings(path, QSettings::IniFormat);
@@ -1122,7 +1183,7 @@ std::vector<HighlightRule> LogViewerWidget::loadHighlightRules() {
 void LogViewerWidget::saveHighlightRules(const std::vector<HighlightRule>& rules) {
     QString path = g_iniPath;
     if (path.isEmpty()) {
-        path = QDir::homePath() + "/.config/doublecmd/logviewer.ini";
+        path = QDir::homePath() + "/.config/doublecmd/logview.ini";
     }
 
     QSettings settings(path, QSettings::IniFormat);

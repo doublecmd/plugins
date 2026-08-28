@@ -1,0 +1,64 @@
+version = 1
+SPDX-PackageName = "md4qt"
+SPDX-PackageSupplier = "Igor Mironchik <igor.mironchik@gmail.com>"
+SPDX-PackageDownloadLocation = "https://github.com/igormironchik/md4qt"
+
+[[annotations]]
+path = ["tests/auto/commonmark/0.30/spec.json", "tests/auto/commonmark/0.31.2/spec.json"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "John MacFarlane"
+SPDX-License-Identifier = "CC-BY-SA-4.0"
+
+[[annotations]]
+path = ["tests/auto/commonmark/0.30/**.md", "tests/auto/commonmark/0.31.2/**.md", "tests/auto/html/data/**.md", "apply-clang-format.sh", "codecov.yml", ".github/workflows/**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Igor Mironchik <igor.mironchik@gmail.com>"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "tests/md_benchmark/3rdparty/cmark-gfm/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2014 John MacFarlane"
+SPDX-License-Identifier = "BSD-2-Clause"
+
+[[annotations]]
+path = "tests/auto/bench/data/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2014 Vitaly Puzrin, Alex Kocharin"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "3rdparty/doctest/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2016-2021 Viktor Kirilov"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = ["tests/auto/test_parser/data/**", "docs/**", "tests/auto/plugins/emphasis/data/**.md", "tests/auto/plugins/yaml/data/**.md"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Igor Mironchik <igor.mironchik@gmail.com>"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "tests/auto/gfm/data/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "none"
+SPDX-License-Identifier = "CC-BY-SA-4.0"
+
+[[annotations]]
+path = "tests/manual/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "none"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = [".gitignore", ".kde-ci.yml", "conanfile.txt", "REUSE.toml", "metainfo.yaml"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "none"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = "tests/utils/entity/entities.json"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "WHATWG (Apple, Google, Mozilla, Microsoft)"
+SPDX-License-Identifier = "CC-BY-4.0"

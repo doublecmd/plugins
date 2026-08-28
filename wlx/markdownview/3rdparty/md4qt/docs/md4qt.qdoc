@@ -1,0 +1,11 @@
+/*!
+    \module md4qt
+    \title md4qt C++ Classes
+    \ingroup modules
+    \cmakepackage md4qt
+    \cmakecomponent md4qt
+
+    \brief Static C++ library for parsing Markdown.
+
+    \include md4qt-README.qdocinc
+*/

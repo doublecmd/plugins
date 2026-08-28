@@ -1,93 +1,67 @@
 #include "LogModel.h"
-#include <QDebug>
-#include <QColor>
-#include <re2/re2.h>
-#include <QFile>
+#include <QMetaObject>
 
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <cstring>
+namespace {
 
-// Common timestamp patterns for tryParseTimestamp
-// ISO:    2024-05-03T14:23:01  or  2024-05-03 14:23:01
-// Syslog: May  3 14:23:01
-// Nginx:  03/May/2024:14:23:01
-
-static const char *kReIso =
-    R"((\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2}))";
-static const char *kReSyslog =
-    R"((\w{3})\s+(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2}))";
-static const char *kReNginx =
-    R"((\d{2})/(\w{3})/(\d{4}):(\d{2}):(\d{2}):(\d{2}))";
-
-static int monthFromAbbr(const std::string &m) {
-    static const char *months[] = {
-        "Jan","Feb","Mar","Apr","May","Jun",
-        "Jul","Aug","Sep","Oct","Nov","Dec"
-    };
-    for (int i = 0; i < 12; ++i)
-        if (m == months[i]) return i + 1;
-    return 1;
+QDateTime toQDateTime(const LogTimestamp &ts)
+{
+    if (!ts.valid) return {};
+    return QDateTime(QDate(ts.year, ts.month, ts.day), QTime(ts.hour, ts.minute, ts.second));
 }
 
-// ─── Construction / Destruction ────────────────────────────────────────
+QColor toQColor(const LogColor &c)
+{
+    if (!c.valid) return {};
+    return QColor(c.r, c.g, c.b);
+}
+
+LogColor toLogColor(const QColor &c)
+{
+    if (!c.isValid()) return {};
+    return LogColor{c.red(), c.green(), c.blue(), true};
+}
+
+EngineHighlightRule toEngineRule(const HighlightRule &r)
+{
+    EngineHighlightRule er;
+    er.pattern = r.pattern.toStdString();
+    er.foregroundColor = toLogColor(r.foregroundColor);
+    er.backgroundColor = toLogColor(r.backgroundColor);
+    er.compiledRegex = r.compiledRegex;
+    return er;
+}
+
+} // namespace
 
 LogModel::LogModel(QObject *parent)
     : QAbstractListModel(parent)
+    , m_engine(std::make_unique<LogEngine>())
 {
     m_watcher = new QFileSystemWatcher(this);
     connect(m_watcher, &QFileSystemWatcher::fileChanged,
             this, &LogModel::onFileChanged);
 }
 
-LogModel::~LogModel() {
-    stopSearch();
-    cleanup();
+LogModel::~LogModel()
+{
+    m_engine->stopSearch();
 }
 
-void LogModel::cleanup() {
-    if (m_watcher && !m_filePath.isEmpty())
-        m_watcher->removePath(m_filePath);
-
-    if (m_mappedData && m_mappedData != MAP_FAILED) {
-        munmap(const_cast<char*>(m_mappedData), m_mappedSize);
-        m_mappedData = nullptr;
-        m_mappedSize = 0;
-    }
-    if (m_fd >= 0) {
-        close(m_fd);
-        m_fd = -1;
-    }
-    m_lineOffsets.clear();
-    m_matches.clear();
-    m_totalMatches = 0;
-}
-
-// ─── QAbstractListModel overrides ──────────────────────────────────────
-
-int LogModel::rowCount(const QModelIndex &parent) const {
+int LogModel::rowCount(const QModelIndex &parent) const
+{
     if (parent.isValid()) return 0;
-    return m_lineOffsets.size() > 1
-        ? static_cast<int>(m_lineOffsets.size() - 1)
-        : 0;
+    return m_engine->lineCount();
 }
 
 int LogModel::lineCount() const { return rowCount(); }
 
-QString LogModel::lineText(int row) const {
-    if (row < 0 || row >= lineCount() || !m_mappedData) return {};
-    const uint64_t start = m_lineOffsets[row];
-    const uint64_t end   = m_lineOffsets[row + 1];
-    uint64_t len = end - start;
-    while (len > 0 && (m_mappedData[start + len - 1] == '\n' ||
-                       m_mappedData[start + len - 1] == '\r'))
-        --len;
-    return QString::fromUtf8(m_mappedData + start, static_cast<int>(len));
+QString LogModel::lineText(int row) const
+{
+    return QString::fromUtf8(m_engine->lineText(row).c_str());
 }
 
-QVariant LogModel::data(const QModelIndex &index, int role) const {
+QVariant LogModel::data(const QModelIndex &index, int role) const
+{
     if (!index.isValid()) return {};
     const int row = index.row();
     if (row < 0 || row >= lineCount()) return {};
@@ -96,345 +70,104 @@ QVariant LogModel::data(const QModelIndex &index, int role) const {
         return lineText(row);
 
     if (role == Qt::BackgroundRole || role == Qt::ForegroundRole) {
-        // Search match background takes priority
-        if (role == Qt::BackgroundRole && row < (int)m_matches.size() && m_matches[row]) {
-            return QColor(60, 60, 0); // dark yellow
-        }
-
-        // Test highlight rules in order
-        if (m_mappedData && !m_rules.empty()) {
-            const uint64_t start = m_lineOffsets[row];
-            const uint64_t end   = m_lineOffsets[row + 1];
-            uint64_t len = end - start;
-            while (len > 0 && (m_mappedData[start + len - 1] == '\n' ||
-                               m_mappedData[start + len - 1] == '\r'))
-                --len;
-            re2::StringPiece linePiece(m_mappedData + start, len);
-
-            for (const auto &rule : m_rules) {
-                if (rule.compiledRegex && re2::RE2::PartialMatch(linePiece, *rule.compiledRegex)) {
-                    if (role == Qt::BackgroundRole) {
-                        return rule.backgroundColor;
-                    } else if (role == Qt::ForegroundRole) {
-                        return rule.foregroundColor;
-                    }
-                }
-            }
-        }
+        LogColor bg, fg;
+        m_engine->colorsForRow(row, bg, fg);
+        if (role == Qt::BackgroundRole && bg.valid) return toQColor(bg);
+        if (role == Qt::ForegroundRole && fg.valid) return toQColor(fg);
     }
 
     return {};
 }
 
-void LogModel::setHighlightRules(const std::vector<HighlightRule>& rules) {
-    m_rules = rules;
-    if (lineCount() > 0) {
+void LogModel::setHighlightRules(const std::vector<HighlightRule> &rules)
+{
+    m_qtRules = rules;
+    std::vector<EngineHighlightRule> engineRules;
+    engineRules.reserve(rules.size());
+    for (const auto &r : rules) engineRules.push_back(toEngineRule(r));
+    m_engine->setHighlightRules(std::move(engineRules));
+
+    if (lineCount() > 0)
         emit dataChanged(index(0), index(lineCount() - 1), {Qt::BackgroundRole, Qt::ForegroundRole});
-    }
 }
 
-
-// ─── File loading ──────────────────────────────────────────────────────
-
-void LogModel::loadFile(const QString& filePath) {
+void LogModel::loadFile(const QString &filePath)
+{
     beginResetModel();
-    stopSearch();
-    cleanup();
+    m_engine->stopSearch();
 
     m_filePath = filePath;
-    const QByteArray pathBytes = filePath.toUtf8();
-
-    m_fd = open(pathBytes.constData(), O_RDONLY);
-    if (m_fd < 0) {
-        endResetModel();
-        return;
-    }
-
-    struct stat st;
-    if (fstat(m_fd, &st) != 0 || st.st_size == 0) {
-        close(m_fd); m_fd = -1;
-        endResetModel();
-        return;
-    }
-
-    m_mappedSize = static_cast<size_t>(st.st_size);
-    m_mappedData = static_cast<const char*>(
-        mmap(nullptr, m_mappedSize, PROT_READ, MAP_SHARED, m_fd, 0));
-
-    if (m_mappedData == MAP_FAILED) {
-        m_mappedData = nullptr; m_mappedSize = 0;
-        close(m_fd); m_fd = -1;
-        endResetModel();
-        return;
-    }
-
-    madvise(const_cast<char*>(m_mappedData), m_mappedSize, MADV_SEQUENTIAL);
-
-    // Build line-offset index
-    m_lineOffsets.reserve(m_mappedSize / 60);
-    m_lineOffsets.push_back(0);
-    for (size_t i = 0; i < m_mappedSize; ++i) {
-        if (m_mappedData[i] == '\n' && i + 1 < m_mappedSize)
-            m_lineOffsets.push_back(i + 1);
-    }
-    m_lineOffsets.push_back(m_mappedSize); // sentinel
+    m_engine->loadFile(filePath.toStdString());
 
     endResetModel();
-    int linesIndexedThisBatch = 0;
 
-    buildTimestampIndex();
+    LogTimestamp first = m_engine->firstTimestamp();
+    LogTimestamp last = m_engine->lastTimestamp();
+    if (first.valid || last.valid)
+        emit timestampsDetected(toQDateTime(first), toQDateTime(last));
 
-    // Set up file watcher for tail
     m_watcher->addPath(m_filePath);
 }
 
-// ─── Clear / Delete ────────────────────────────────────────────────────
-
-void LogModel::clearFile() {
+void LogModel::clearFile()
+{
     if (m_filePath.isEmpty()) return;
-
-    // Truncate the file to zero bytes
-    int fd = open(m_filePath.toUtf8().constData(), O_WRONLY | O_TRUNC);
-    if (fd >= 0) {
-        close(fd);
-    }
-
-    // Reload so the model reflects the empty file
+    m_engine->clearFile();
     loadFile(m_filePath);
 }
 
-void LogModel::deleteRows(const std::vector<int>& sourceRows) {
-    if (sourceRows.empty() || m_filePath.isEmpty() || !m_mappedData) return;
-
-    // Build a set for O(1) lookup
-    std::vector<bool> toDelete(lineCount(), false);
-    for (int r : sourceRows) {
-        if (r >= 0 && r < lineCount())
-            toDelete[r] = true;
-    }
-
-    // Collect the raw bytes of lines we want to keep
-    QByteArray kept;
-    kept.reserve(static_cast<int>(m_mappedSize));
-    for (int i = 0; i < lineCount(); ++i) {
-        if (toDelete[i]) continue;
-        const uint64_t start = m_lineOffsets[i];
-        const uint64_t end   = m_lineOffsets[i + 1];
-        kept.append(m_mappedData + start, static_cast<int>(end - start));
-    }
-
-    // Write the kept lines back to the file
-    // (unmap first, then rewrite, then reload)
-    QString path = m_filePath;  // save before cleanup
-    cleanup();
-
-    QFile file(path);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        file.write(kept);
-        file.close();
-    }
-
-    loadFile(path);
+void LogModel::deleteRows(const std::vector<int> &sourceRows)
+{
+    if (sourceRows.empty() || m_filePath.isEmpty()) return;
+    beginResetModel();
+    m_engine->deleteRows(sourceRows);
+    endResetModel();
 }
 
-// ─── Search ────────────────────────────────────────────────────────────
-
-void LogModel::startSearch(const QString& query) {
-    stopSearch(); // cancel any previous
-
-    if (query.isEmpty() || lineCount() == 0) {
-        m_matches.clear();
-        m_totalMatches = 0;
-        emit dataChanged(index(0), index(lineCount() - 1), {Qt::BackgroundRole});
-        emit searchFinished(0);
-        return;
-    }
-
-    m_matches.assign(lineCount(), false);
-    m_totalMatches = 0;
-
-    // Launch background search with jthread + stop_token
-    m_searchThread = std::jthread([this, pattern = query.toStdString()]
-                                  (std::stop_token stoken) {
-        re2::RE2 re(pattern);
-        if (!re.ok()) {
-            QMetaObject::invokeMethod(this, [this]() {
-                emit searchFinished(-1); // -1 = invalid regex
-            }, Qt::QueuedConnection);
-            return;
-        }
-
-        const int total = lineCount();
-        int matches = 0;
-
-        for (int i = 0; i < total; ++i) {
-            if (stoken.stop_requested()) break;
-
-            const uint64_t start = m_lineOffsets[i];
-            const uint64_t end   = m_lineOffsets[i + 1];
-            uint64_t len = end - start;
-            while (len > 0 && (m_mappedData[start + len - 1] == '\n' ||
-                               m_mappedData[start + len - 1] == '\r'))
-                --len;
-
-            re2::StringPiece line(m_mappedData + start, len);
-            if (re2::RE2::PartialMatch(line, re)) {
-                m_matches[i] = true;
-                ++matches;
-            }
-        }
-
-        m_totalMatches = matches;
-
-        // Notify UI from main thread
+void LogModel::startSearch(const QString &query)
+{
+    m_engine->startSearch(query.toStdString(), [this](int matches) {
+        // LogEngine invokes this from its own search jthread — marshal
+        // back onto the Qt UI thread, matching the original's
+        // QMetaObject::invokeMethod(..., Qt::QueuedConnection) usage.
         QMetaObject::invokeMethod(this, [this, matches]() {
-            emit dataChanged(index(0), index(lineCount() - 1), {Qt::BackgroundRole});
+            if (lineCount() > 0)
+                emit dataChanged(index(0), index(lineCount() - 1), {Qt::BackgroundRole});
             emit searchFinished(matches);
         }, Qt::QueuedConnection);
     });
 }
 
-void LogModel::stopSearch() {
-    if (m_searchThread.joinable()) {
-        m_searchThread.request_stop();
-        m_searchThread.join();
-    }
+void LogModel::stopSearch() { m_engine->stopSearch(); }
+bool LogModel::isMatch(int row) const { return m_engine->isMatch(row); }
+int LogModel::matchCount() const { return m_engine->matchCount(); }
+int LogModel::nextMatch(int fromRow) const { return m_engine->nextMatch(fromRow); }
+
+QDateTime LogModel::firstTimestamp() const { return toQDateTime(m_engine->firstTimestamp()); }
+QDateTime LogModel::lastTimestamp() const { return toQDateTime(m_engine->lastTimestamp()); }
+
+QDateTime LogModel::parseTimestampFromLine(const QString &line)
+{
+    return toQDateTime(LogEngine::parseTimestampFromLine(line.toStdString()));
 }
 
-bool LogModel::isMatch(int row) const {
-    if (row < 0 || row >= (int)m_matches.size()) return false;
-    return m_matches[row];
+QDateTime LogModel::getInterpolatedTimestamp(int row) const
+{
+    return toQDateTime(m_engine->getInterpolatedTimestamp(row));
 }
 
-int LogModel::matchCount() const {
-    return m_totalMatches.load();
-}
+void LogModel::setFollowEnabled(bool enabled) { m_engine->setFollowEnabled(enabled); }
 
-int LogModel::nextMatch(int fromRow) const {
-    const int total = lineCount();
-    if (total == 0 || m_matches.empty()) return -1;
-    for (int i = 1; i <= total; ++i) {
-        int idx = (fromRow + i) % total;
-        if (m_matches[idx]) return idx;
-    }
-    return -1;
-}
+void LogModel::onFileChanged(const QString &path)
+{
+    if (path != m_filePath || !m_engine->followEnabled()) return;
 
-// ─── Timestamp parsing ─────────────────────────────────────────────────
-
-QDateTime LogModel::tryParseTimestamp(const char *data, int len) {
-    re2::StringPiece sp(data, len);
-    int y, mo, d, h, mi, s;
-    std::string ms;
-
-    // ISO 8601
-    if (re2::RE2::PartialMatch(sp, kReIso, &y, &mo, &d, &h, &mi, &s))
-        return QDateTime(QDate(y, mo, d), QTime(h, mi, s));
-
-    // Nginx / Apache: 03/May/2024:14:23:01
-    if (re2::RE2::PartialMatch(sp, kReNginx, &d, &ms, &y, &h, &mi, &s))
-        return QDateTime(QDate(y, monthFromAbbr(ms), d), QTime(h, mi, s));
-
-    // Syslog: May  3 14:23:01 (no year — use current)
-    if (re2::RE2::PartialMatch(sp, kReSyslog, &ms, &d, &h, &mi, &s))
-        return QDateTime(QDate(QDate::currentDate().year(), monthFromAbbr(ms), d),
-                         QTime(h, mi, s));
-
-    return {};
-}
-
-QDateTime LogModel::parseTimestampFromLine(const QString &line) {
-    QByteArray utf8 = line.toUtf8();
-    return tryParseTimestamp(utf8.constData(), utf8.size());
-}
-
-void LogModel::buildTimestampIndex() {
-    m_interpolatedTimestamps.clear();
-    m_interpolatedTimestamps.resize(lineCount(), QDateTime());
-
-    QDateTime lastKnownTimestamp;
-    QDateTime firstValidTimestamp;
-
-    for (int i = 0; i < lineCount(); ++i) {
-        QDateTime currentTs = parseTimestampFromLine(lineText(i));
-
-        if (currentTs.isValid()) {
-            lastKnownTimestamp = currentTs;
-            if (!firstValidTimestamp.isValid()) {
-                firstValidTimestamp = currentTs;
-            }
-        }
-        
-        if (lastKnownTimestamp.isValid()) {
-            m_interpolatedTimestamps[i] = lastKnownTimestamp;
-        }
-    }
-
-    m_firstTimestamp = firstValidTimestamp;
-    m_lastTimestamp = lastKnownTimestamp;
-
-    if (m_firstTimestamp.isValid() || m_lastTimestamp.isValid())
-        emit timestampsDetected(m_firstTimestamp, m_lastTimestamp);
-}
-
-QDateTime LogModel::getInterpolatedTimestamp(int row) const {
-    if (row < 0 || row >= static_cast<int>(m_interpolatedTimestamps.size())) {
-        return QDateTime();
-    }
-    return m_interpolatedTimestamps[row];
-}
-
-// ─── Follow / tail ─────────────────────────────────────────────────────
-
-void LogModel::setFollowEnabled(bool enabled) {
-    m_followEnabled = enabled;
-}
-
-void LogModel::onFileChanged(const QString &path) {
-    if (path != m_filePath || !m_followEnabled) return;
-
-    struct stat st;
-    if (stat(m_filePath.toUtf8().constData(), &st) != 0) return;
-    size_t newSize = static_cast<size_t>(st.st_size);
-    if (newSize <= m_mappedSize) return; // file didn't grow
-
-    size_t oldSize = m_mappedSize;
-
-    // Unmap old, remap at new size
-    if (m_mappedData && m_mappedData != MAP_FAILED)
-        munmap(const_cast<char*>(m_mappedData), m_mappedSize);
-
-    m_mappedSize = newSize;
-    m_mappedData = static_cast<const char*>(
-        mmap(nullptr, m_mappedSize, PROT_READ, MAP_SHARED, m_fd, 0));
-
-    if (m_mappedData == MAP_FAILED) {
-        m_mappedData = nullptr; m_mappedSize = 0;
-        return;
-    }
-
-    // Scan only the new portion for additional line offsets
-    // Remove the old sentinel first
-    if (!m_lineOffsets.empty())
-        m_lineOffsets.pop_back();
-
-    int oldLineCount = m_lineOffsets.size() > 0
-        ? static_cast<int>(m_lineOffsets.size()) - 0
-        : 0;
-
-    for (size_t i = oldSize; i < m_mappedSize; ++i) {
-        if (m_mappedData[i] == '\n' && i + 1 < m_mappedSize)
-            m_lineOffsets.push_back(i + 1);
-    }
-    m_lineOffsets.push_back(m_mappedSize); // new sentinel
-
-    int newLineCount = static_cast<int>(m_lineOffsets.size()) - 1;
-    if (newLineCount > oldLineCount) {
-        beginInsertRows(QModelIndex(), oldLineCount, newLineCount - 1);
+    auto result = m_engine->refreshTail();
+    if (result.grew) {
+        beginInsertRows(QModelIndex(), result.oldLineCount, result.newLineCount - 1);
         endInsertRows();
+        emit tailUpdated();
     }
-
-    emit tailUpdated();
 
     // QFileSystemWatcher may remove the path after a change; re-add it
     if (!m_watcher->files().contains(m_filePath))

@@ -37,7 +37,7 @@ FIELD fields[]={
      {"contains",   ft_numeric_32,""},
 };
 
-const char* ConfigFileName = "leven.ini";
+const char* ConfigFileName = "similarity.ini";
 
 char CurrentConfigPath[PATH_MAX];
 

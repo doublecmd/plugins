@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DoubleCommander>
+  <Plugins>
+    <WlxPlugins>
+      <WlxPlugin Enabled="True">
+        <Name>TestPlugin</Name>
+        <Path>%COMMANDER_PATH%/plugins/wlx/testplugin/test.wlx</Path>
+        <DetectString>EXT="TXT"</DetectString>
+      </WlxPlugin>
+    </WlxPlugins>
+  </Plugins>
+</DoubleCommander>
