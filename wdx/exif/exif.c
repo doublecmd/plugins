@@ -3,22 +3,13 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include <math.h>
+#include "winapi.h"
 #include "wdxplugin.h"
-
-#define byte uint8_t
-#define INVALID_HANDLE_VALUE -1
-#define min(a, b) (((a) < (b)) ? (a) : (b))
 
 #define COUNTOF(x) sizeof(x)/sizeof(x[0])
 
-#define _detectstring "(EXT=\"JPG\") | (EXT=\"JPEG\") | (EXT=\"TIFF\") | (EXT=\"TIF\") | (EXT=\"JPE\") | (EXT=\"CRW\") | (EXT=\"THM\") | (EXT=\"CR2\") | (EXT=\"CR3\") | (EXT=\"DNG\") | (EXT=\"NEF\") | (EXT=\"ORF\") | (EXT=\"RAW\") | (EXT=\"RW2\") | (EXT=\"ARW\") | (EXT=\"PEF\") | (EXT=\"RAF\")"
+#define _detectstring "(EXT=\"JPG\") | (EXT=\"JPEG\") | (EXT=\"TIFF\") | (EXT=\"TIF\") | (EXT=\"JPE\") | (EXT=\"CRW\") | (EXT=\"THM\") | (EXT=\"CR2\") | (EXT=\"CR3\") | (EXT=\"DNG\") | (EXT=\"NEF\") | (EXT=\"ORF\") | (EXT=\"RAW\") | (EXT=\"RW2\") | (EXT=\"ARW\") | (EXT=\"PEF\") | (EXT=\"RAF\") | (EXT=\"GPR\") | (EXT=\"HEIC\")"
 
 BOOL ParseTiffFile(int f,char* data,int datalen,int TagNeeded,int TagNeeded2,int FormatNeeded,int FieldIndex, void* FieldValue,int maxlen,BOOL unicode,int UnitIndex);
 
@@ -297,19 +288,6 @@ char* strlcpy(char* dst,const char* src,int maxlen)     // This function assumes
 	} else
 		strcpy(dst,src);
 	return dst;
-}
-
-static char* itoa(int value, char* str, int base)
-{
-  if (base == 10)
-  {
-    sprintf(str, "%d", value);
-  }
-  else if (base == 16)
-  {
-    sprintf(str, "%x", value);
-  }
-  return str;
 }
 
 int DCPCALL ContentGetDetectString(char* DetectString,int maxlen)
@@ -682,7 +660,7 @@ int CanonMakerNote(char* data,int datalen,int makernoteoffset,int FieldIndex,BOO
 	if(ParseTiffFile(INVALID_HANDLE_VALUE,data,datalen,0x010F,0x010F,ft_string,22,make,31,false,0)==false)
 		return -1;
     
-	if(strcasecmp(make,"Canon")!=0)
+	if(stricmp(make,"Canon")!=0)
 		return -1;
 	
 	FieldIndex-=canon_start;
@@ -813,11 +791,11 @@ BOOL ParseTiffFile(int f,char* data,int datalen,int TagNeeded,int TagNeeded2,int
 		if (exifoffset+2>datalen) {  // special case of exif data outside the data block!
 			if (f==INVALID_HANDLE_VALUE)
 				return false;
-			int newdataoffset=lseek(f,0,SEEK_CUR)-datalen+exifoffset;
-			if (-1==lseek(f,newdataoffset,SEEK_SET))
+			int newdataoffset=SetFilePointer(f,0,NULL,FILE_CURRENT)-datalen+exifoffset;
+			if ((DWORD)-1==SetFilePointer(f,newdataoffset,NULL,FILE_BEGIN))
 				return false;
 			datalen=64*1024;  // max buffer size, see below
-			datalen = read(f,data,64*1024);
+			ReadFile(f,data,64*1024,(DWORD*)&datalen,NULL);
 			exifoffsetfromstart=exifoffset;
 			exifoffset=0;
 		}
@@ -926,10 +904,8 @@ BOOL ParseTiffFile(int f,char* data,int datalen,int TagNeeded,int TagNeeded2,int
 					chr2 = data[nr+1];
 					data[tagdataoffset+tagnumelements]=0;				// Since the string is not neccerilly NULL terminated - make it so
 					data[tagdataoffset+tagnumelements+1]=0;
-					/*
 					if(!WideCharToMultiByte(CP_ACP,0,(LPCWSTR)(data+tagdataoffset+8),nr/2+1,bufval,nr,NULL,NULL))
 						bufval[0]=0;
-					*/
 					bufval[nr]=0;
 					data[nr]=chr1;				// Just to be on the safe side
 					data[nr+1]=chr2;
@@ -1006,7 +982,7 @@ BOOL ParseTiffFile(int f,char* data,int datalen,int TagNeeded,int TagNeeded2,int
 		*(int*)FieldValue=numvalue;
 		break;
 	case ft_numeric_64:
-		*(int64_t*)FieldValue=numvalue;
+		*(__int64*)FieldValue=numvalue;
 		break;
 	case ft_numeric_floating:
 		*(double*)FieldValue=doublevalue;
@@ -1157,9 +1133,9 @@ BOOL ParseTiffFile(int f,char* data,int datalen,int TagNeeded,int TagNeeded2,int
 					break;
 				}
 			}
-			if (!found) {
-				strlcpy((char*)FieldValue,CompressionName[COUNTOF(CompressionNr)],maxlen-1);
-			}
+				if (!found) {
+					strlcpy((char*)FieldValue,CompressionName[COUNTOF(CompressionNr)],maxlen-1);
+				}
 			break;		
 		case 0x927C:		//MakerNote
 			switch(FieldIndex){
@@ -1333,6 +1309,92 @@ BOOL ParseTiffFile(int f,char* data,int datalen,int TagNeeded,int TagNeeded2,int
 	return true;
 }
 
+__int64 readNbytes(char** pb, unsigned int len)
+{
+    __int64 ret = 0;
+	unsigned char* pdata=(unsigned char*)*pb;
+    for (unsigned int i = 0; i < len; i++)
+        ret = (ret << 8) | pdata[i];
+	*pb+=len;
+    return ret;
+}
+
+// HEIC format description:
+// http://cheeky4n6monkey.blogspot.com/2017/10/monkey-takes-heic.html
+// http://nokiatech.github.io/heif/technical.html
+// some inspiration taken from from FFMPEG: https://ffmpeg.org/pipermail/ffmpeg-devel/2017-August/215003.html (LGPL)
+__int64 readIlocBlock(char* data, DWORD datalen, DWORD exifId, DWORD* retlen)
+{
+	char* pb=data;
+	char* pbEnd=data+datalen;
+    int version = pb++[0];
+    pb+=3; // flags
+    __int64 ret = 0;
+
+    unsigned item_count, i, j;
+
+    int offset_size = pb++[0];
+    int length_size = offset_size & 0xf;
+	offset_size >>= 4;
+    int base_offset_size = pb++[0];
+    int index_size = base_offset_size & 0xf;
+    base_offset_size >>= 4;
+
+    if (version > 2)
+        return -1;
+    
+    if (offset_size > 8 || length_size > 8 || base_offset_size > 8 || index_size > 8)
+        return -1;
+    
+	if (version < 2) {
+		item_count = get2bytes(pb,true);
+		pb+=2;
+	} else {
+		item_count = get4bytes(pb,true);
+		pb+=4;
+	}
+
+    for (i = 0; i < item_count; i++) {
+        __int64 base_offset;
+		DWORD id;
+        int offset_type = 0;  //0==file, 1=mdat, 2=item
+
+		if (pb>=pbEnd)
+			return -1;
+		if (version<2) {
+			id = get2bytes(pb,true);
+			pb+=2;
+		} else {
+			id = get4bytes(pb,true);
+			pb+=4;
+		}
+
+        if (version > 0) {
+            pb++; // skip byte
+            offset_type = pb++[0] & 0xf;
+        }
+
+   		pb+=2;  // skip data ref index
+        base_offset = readNbytes(&pb, base_offset_size);
+        int nb_extents = get2bytes(pb,true);
+		pb+=2;
+
+        for (j = 0; j < nb_extents; j++) {
+			if (pb>=pbEnd)
+				return -1;
+            readNbytes(&pb, index_size);  // skip index
+            __int64 ext_offset = readNbytes(&pb, offset_size);
+            __int64 ext_len = readNbytes(&pb, length_size);
+			if (id == exifId) {
+				*retlen = (DWORD)ext_len;
+				return base_offset + ext_offset;
+			}
+        }
+    }
+
+    return -1;
+}
+
 int DCPCALL ContentGetValue(char* FileName,int FieldIndex,int UnitIndex,void* FieldValue,int maxlen,int flags)
 {
 	int f;
@@ -1350,7 +1412,7 @@ int DCPCALL ContentGetValue(char* FileName,int FieldIndex,int UnitIndex,void* Fi
        || strcasecmp(p,".jpe")==0 || strcasecmp(p,".crw")==0  || strcasecmp(p,".thm")==0 || strcasecmp(p,".cr2")==0
        || strcasecmp(p,".dng")==0 || strcasecmp(p,".nef")==0 || strcasecmp(p,".orf")==0 || strcasecmp(p,".cr3")==0
        || strcasecmp(p,".raw")==0 || strcasecmp(p,".rw2")==0 || strcasecmp(p,".arw")==0 || strcasecmp(p,".pef")==0
-	   || strcasecmp(p,".raf")==0))
+       || strcasecmp(p,".raf")==0 || strcasecmp(p,".gpr")==0 || strcasecmp(p,".heic")==0))
 		return ft_fileerror;
 
 	strlcpy(FileName2,FileName,MAX_PATH-1);
@@ -1359,66 +1421,180 @@ int DCPCALL ContentGetValue(char* FileName,int FieldIndex,int UnitIndex,void* Fi
 	   strcpy(FileName2+strlen(FileName2)-3,"thm");
 	} 
 	
-	f=open(FileName2, O_RDONLY);
+	f=CreateFileT(FileName2,GENERIC_READ,FILE_SHARE_READ | FILE_SHARE_WRITE,NULL,
+		OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,NULL);
 	if (f==INVALID_HANDLE_VALUE)
 		return ft_fileerror;
 
-	bytesread = read(f,data,12);
+	ReadFile(f,data,12,&bytesread,NULL);
 	strcpy(exifheader,"\xFF\xE1");
 	// First two bytes always: FF D8 (start of image)
 	// Next two bytes: A Tag like FF E0 = JFIF or FF E1 = Exif
 
 	// Is the file in CR2 format? If yes, decode it directly as a TIFF file!
+	DWORD headersize=get4bytes(data,true);
 	if (strncmp(data,"\x49\x49",2)==0 || strncmp(data,"\x4D\x4D",2)==0) {
 		length=sizeof(data);
-		lseek(f,0,SEEK_SET);
-	} else if (strncmp(data+4,"ftypcrx",7)==0) {
-		DWORD headersize=get4bytes(data,true);
-		if (lseek(f,headersize,SEEK_SET) == (off_t)-1) {
-			close(f);
-			return ft_fileerror;
-		}
-		bytesread = read(f,data,8);
-		if (strncmp(data+4,"moov",4)!=0) {
-			close(f);
-			return ft_fileerror;
-		}
-		bytesread = read(f,data,24);   // uuid header inside the moov header, contains all metadata. It's 8+16 bytes long
-		if (strncmp(data+4,"uuid",4)!=0) {
-			close(f);
-			return ft_fileerror;
-		}
-		DWORD uuiddatasize=get4bytes(data,true);
-		DWORD lastpos=0;
-		while(1) {      // find all EXIF headers within the UUID header!
-			bytesread = read(f,data,8);
-			headersize=get4bytes(data,true);
-			lastpos+=headersize;
-			if (strncmp(data+4,"CMT",3)==0 && headersize>=16 && headersize<=64*1024) {
-				bytesread = read(f,data,headersize-8);
-				if (ParseTiffFile(f,data,headersize-8,tagtable[FieldIndex],alternatetagtable[FieldIndex],fieldtypes[FieldIndex],FieldIndex,FieldValue,maxlen,(flags & 32768)==0,UnitIndex)) {
-					close(f);
-					return fieldtypes[FieldIndex];
-				}
-			} else if (headersize<8 || (lseek(f,headersize-8,SEEK_CUR) == (off_t)-1)) {
-				break;
+		SetFilePointer(f,0,NULL,FILE_BEGIN);
+	} else if (strncmp(data+4,"ftyp",4)==0) {
+		BOOL isHeic=strncmp(data+8,"heic",4)==0;
+		BOOL isCrx=strncmp(data+8,"crx",3)==0;
+		if (!isHeic && !isCrx && headersize>=16 && headersize<=1024) {
+			if (!ReadFile(f,data,headersize-12,&bytesread,NULL) || headersize-12!=bytesread) {
+				CloseHandle(f);
+				return ft_fileerror;
 			}
-			if (lastpos>=uuiddatasize)
-				break;
-		}
-		close(f);
-		return ft_fileerror;
-	} else if (strncmp(data,"FUJIFILMCCD-",12)==0) {  // we only read the first 12 characters, it would be FUJIFILMCCD-RAW!
-		bytesread = read(f,data,28+32+24);
-		DWORD offset=get4bytes(data+28+32+24-12,true);
-		if (lseek(f,offset,SEEK_SET) == (off_t)-1) {
-			close(f);
+			for (int i=4;i<bytesread;i+=4)
+				if (strncmp(data+i,"heic",4)==0) {
+					isHeic=true;
+					break;
+				}
+		} else if (SetFilePointer(f,headersize,NULL,FILE_BEGIN) == INVALID_SET_FILE_POINTER) {
+			CloseHandle(f);
 			return ft_fileerror;
 		}
-		bytesread = read(f,data,12);
+		if (isHeic) {
+			BOOL metafound=false;
+			while(1) {      // find meta header within main block
+				if (!ReadFile(f,data,12,&bytesread,NULL) || bytesread!=12)
+					break;
+				headersize=get4bytes(data,true);
+				if (strncmp(data+4,"meta",4)==0) {
+					metafound=true;
+					break;
+				} else if (headersize<12 || (SetFilePointer(f,headersize-12,NULL,FILE_CURRENT) == INVALID_SET_FILE_POINTER)) {
+					break;
+				}
+			}
+			if (!metafound) {
+				CloseHandle(f);
+				return ft_fileerror;
+			}
+
+			DWORD lastpos=0;
+			DWORD metadatasize=get4bytes(data,true);
+			DWORD idOfExifData=0xFFFFFFFF;
+			while(1) {      // find iinf header within meta block
+				if (!ReadFile(f,data,8,&bytesread,NULL) || bytesread!=8)
+					break;
+				headersize=get4bytes(data,true);
+				lastpos+=headersize;
+				if (strncmp(data+4,"iinf",4)==0) {
+					// find infe header
+					lastpos-=headersize;   // we count again
+					DWORD iinfstartpos=lastpos;
+					DWORD iinfsize=get4bytes(data,true);
+					if (!ReadFile(f,data,6,&bytesread,NULL) || bytesread!=6)  // 1 byte version, 3 byte flags, and 2 or 4 bytes number of entries
+						break;
+					if (data[0]>0)
+						if (SetFilePointer(f,2,NULL,FILE_CURRENT) == INVALID_SET_FILE_POINTER)  // skip 2 more bytes number of entries in version >0
+							break;
+					lastpos+=6;
+					while(1) {      // find exif header within meta block
+						if (!ReadFile(f,data,8,&bytesread,NULL) || bytesread!=8)
+							break;
+						DWORD infesize=get4bytes(data,true);
+						lastpos+=infesize;
+						if (strncmp(data+4,"infe",4)==0 && infesize>=16 && infesize<=64*1024) {
+							if (!ReadFile(f,data,infesize-8,&bytesread,NULL) || bytesread!=infesize-8)
+								break;
+							int ofs;
+							if (data[0]>=3)
+								ofs=10;
+							else
+								ofs=8;
+
+							if (strncmp(data+ofs,"Exif",4)==0) {
+								if (data[0]>=3)
+									idOfExifData=get4bytes(data+4,true);
+								else
+									idOfExifData=get2bytes(data+4,true);
+								// skip rest of iinf header!
+								SetFilePointer(f,iinfsize-(lastpos-iinfstartpos)-8,NULL,FILE_CURRENT);
+								break;
+							}
+						} else if (infesize<8 || (SetFilePointer(f,infesize-8,NULL,FILE_CURRENT) == INVALID_SET_FILE_POINTER)) {
+							break;
+						}
+						if (lastpos-iinfstartpos>=iinfsize)
+							break;
+					}
+				} else if (strncmp(data+4,"iloc",4)==0 && idOfExifData!=0xFFFFFFFF) { // positions of items in HEIC file, index from iinf header!
+					DWORD ilocsize=get4bytes(data,true);
+					if (ilocsize>=16 && ilocsize<=64*1024) {
+						DWORD len=0;
+						if (!ReadFile(f,data,ilocsize-8,&bytesread,NULL) || bytesread!=ilocsize-8)
+							break;
+						__int64 exifDataOffset = readIlocBlock(data,bytesread,idOfExifData,&len);
+						if (exifDataOffset>0 && len>32 && len<64*1024) {
+							if (SetFilePointer(f,exifDataOffset,NULL,FILE_BEGIN) == INVALID_SET_FILE_POINTER)
+								break;
+							if (!ReadFile(f,data,len,&bytesread,NULL) || len!=bytesread)
+								break;
+							DWORD exifHeaderLen=get4bytes(data,true);
+							if (strncmp(data+4,"Exif",4)==0 && exifHeaderLen>0 && exifHeaderLen<bytesread)
+								if (ParseTiffFile(f,data+4+exifHeaderLen,bytesread-exifHeaderLen,tagtable[FieldIndex],alternatetagtable[FieldIndex],fieldtypes[FieldIndex],FieldIndex,FieldValue,maxlen,(flags & 32768)==0,UnitIndex)) {
+									CloseHandle(f);
+									return fieldtypes[FieldIndex];
+								}
+						}
+					}
+					break;
+				} else if (headersize<8 || (SetFilePointer(f,headersize-8,NULL,FILE_CURRENT) == INVALID_SET_FILE_POINTER)) {
+					break;
+				}
+				if (lastpos>=metadatasize)
+					break;
+			}
+			CloseHandle(f);
+			return ft_fileerror;
+		} else if (isCrx) {
+			if (SetFilePointer(f,headersize,NULL,FILE_BEGIN) == INVALID_SET_FILE_POINTER) {
+				CloseHandle(f);
+				return ft_fileerror;
+			}
+			ReadFile(f,data,8,&bytesread,NULL);
+			if (strncmp(data+4,"moov",4)!=0) {
+				CloseHandle(f);
+				return ft_fileerror;
+			}
+			ReadFile(f,data,24,&bytesread,NULL);   // uuid header inside the moov header, contains all metadata. It's 8+16 bytes long
+			if (strncmp(data+4,"uuid",4)!=0) {
+				CloseHandle(f);
+				return ft_fileerror;
+			}
+			DWORD uuiddatasize=get4bytes(data,true);
+			DWORD lastpos=0;
+			while(1) {      // find all EXIF headers within the UUID header!
+				ReadFile(f,data,8,&bytesread,NULL);
+				headersize=get4bytes(data,true);
+				lastpos+=headersize;
+				if (strncmp(data+4,"CMT",3)==0 && headersize>=16 && headersize<=64*1024) {
+					ReadFile(f,data,headersize-8,&bytesread,NULL);
+					if (ParseTiffFile(f,data,headersize-8,tagtable[FieldIndex],alternatetagtable[FieldIndex],fieldtypes[FieldIndex],FieldIndex,FieldValue,maxlen,(flags & 32768)==0,UnitIndex)) {
+						CloseHandle(f);
+						return fieldtypes[FieldIndex];
+					}
+				} else if (headersize<8 || (SetFilePointer(f,headersize-8,NULL,FILE_CURRENT) == INVALID_SET_FILE_POINTER)) {
+					break;
+				}
+				if (lastpos>=uuiddatasize)
+					break;
+			}
+			CloseHandle(f);
+			return ft_fileerror;
+		}
+	} else if (strncmp(data,"FUJIFILMCCD-",12)==0) {  // we only read the first 12 characters, it would be FUJIFILMCCD-RAW!
+		ReadFile(f,data,28+32+24,&bytesread,NULL);
+		DWORD offset=get4bytes(data+28+32+24-12,true);
+		if (SetFilePointer(f,offset,NULL,FILE_BEGIN) == INVALID_SET_FILE_POINTER) {
+			CloseHandle(f);
+			return ft_fileerror;
+		}
+		ReadFile(f,data,12,&bytesread,NULL);
 		if (strncmp(data,"\xFF\xD8\xFF\xE1",3)!=0 ||   // start directly with Exif?
 			strncmp(data+6,"Exif",4)!=0) {
-			close(f);
+			CloseHandle(f);
 			return ft_fileerror;
 		}
 		length=256*(byte)data[4] + (byte)data[5];
@@ -1427,7 +1603,7 @@ int DCPCALL ContentGetValue(char* FileName,int FieldIndex,int UnitIndex,void* Fi
 		// no -> skip all other JPG headers!
 		int jfifheadersize;
 		if (strncmp(data,"\xFF\xD8\xFF",3)!=0) {
-			close(f);
+			CloseHandle(f);
 			return ft_fileerror;
 		}
 		// It's a JFIF file, parse it!
@@ -1436,23 +1612,23 @@ int DCPCALL ContentGetValue(char* FileName,int FieldIndex,int UnitIndex,void* Fi
 		int datasearched=12+jfifheadersize;
 		
 		while(1) {      // skip unneeded headers!
-			if (lseek(f,jfifheadersize,SEEK_CUR) == (off_t)-1) {
-				close(f);
+			if (SetFilePointer(f,jfifheadersize,NULL,FILE_CURRENT) == INVALID_SET_FILE_POINTER) {
+				CloseHandle(f);
 				return ft_fileerror;
 			}
 			// Read next header
-			bytesread = read(f,data,10);
+			ReadFile(f,data,10,&bytesread,NULL);
 			if (bytesread<=0) {
-				close(f);
+				CloseHandle(f);
 				return ft_fileerror;
 			}
 			// The first byte in JPG files is always 0xFF - if not, break.
 			if ((unsigned char)exifheader[0]==0xFF && (unsigned char)data[0]!=0xFF) {
-				close(f);
+				CloseHandle(f);
 				return ft_fileerror;
 			}
 			if	((unsigned char)data[0]==0xFF && (unsigned char)data[1]==0xD9) {
-				close(f);
+				CloseHandle(f);
 				return ft_fileerror;
 			}
 			// Skip any APP0 extension headers
@@ -1474,14 +1650,14 @@ int DCPCALL ContentGetValue(char* FileName,int FieldIndex,int UnitIndex,void* Fi
 			// Some stupid programs create an exif header inside an exif header on each save step!
 			while (strncmp(data,"\xFF\xE1",2)==0 &&
 				strncmp(data+4,"\xFF\xE1",2)==0) {
-				lseek(f,-6,SEEK_CUR);
+				SetFilePointer(f,-6,NULL,FILE_CURRENT);
 				// Read next header
-				bytesread = read(f,data,10);
+				ReadFile(f,data,10,&bytesread,NULL);
 				headergood=strncmp(data,"\xFF\xE1",2)==0 &&
 					strncmp(data+4,"Exif",4)==0;
 			}
 			if (!headergood) {
-	 			close(f);
+	 			CloseHandle(f);
 				return ft_fileerror;
 			}
 		}
@@ -1489,19 +1665,12 @@ int DCPCALL ContentGetValue(char* FileName,int FieldIndex,int UnitIndex,void* Fi
 	} else
 		length=256*(byte)data[4] + (byte)data[5];
 
-	bytesread = read(f,data,length-8);
+	ReadFile(f,data,length-8,&bytesread,NULL);
 	if (ParseTiffFile(f,data,length-8,tagtable[FieldIndex],alternatetagtable[FieldIndex],fieldtypes[FieldIndex],FieldIndex,FieldValue,maxlen,(flags & 32768)==0,UnitIndex)) {
-		close(f);
+		CloseHandle(f);
 		return fieldtypes[FieldIndex];
 	} else {
-		close(f);
+		CloseHandle(f);
 		return ft_fieldempty;
 	}
 }
-
-void DCPCALL ContentSetDefaultParams(ContentDefaultParamStruct* dps)
-{
-
-}
-
-

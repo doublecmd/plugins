@@ -2,13 +2,17 @@ Exif plugin for Double Commander (Linux version). It is based on
 
 ----------------------------------------------------------------
 
-Exif plugin version 2.7 for Total Commander
+Exif plugin version 2.8 beta 1 for Total Commander
 
 This plugin extracts digital camera data from JPG files, like exposure time.
 Can be used in thumbnail view and custom column view, as well as in the
 search and multi-rename functions.
 
 Changelog:
+20230104 Release 2.8b1
+20230104 Added: Support for Gopro .GPR extension (to use, remove the plugin via Configuration - Options - Plugins - Content Plugins, then install it again)
+20230102 Release 2.8b1pre (private beta)
+20230102 Added: Support for HEIC images: .HEIC extension (to use, remove the plugin via Configuration - Options - Plugins - Content Plugins, then install it again)
 20220120 Release 2.7
 20220120 Added: Support for more RAW image types: .ORF, .RAW, .RW2, .ARW, .PEF, .RAF (to use, remove the plugin via Configuration - Options - Plugins - Content Plugins, then install it again)
 20220119 Added: New GPS date field
