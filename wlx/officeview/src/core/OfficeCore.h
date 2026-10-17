@@ -118,7 +118,7 @@ int muPdfPageCount(const std::string &path);
 // ---------------------------------------------------------------------
 class X2TConverter {
 public:
-    explicit X2TConverter(const std::string &preferredEngine); // "EuroOffice" or "OnlyOffice"
+    explicit X2TConverter(const std::string &preferredEngine, const std::string &customPath = ""); // "EuroOffice" or "OnlyOffice"
 
     bool isLoaded = false;
     std::string loadedEngine;

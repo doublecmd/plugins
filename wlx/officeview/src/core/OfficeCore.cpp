@@ -520,13 +520,54 @@ int muPdfPageCount(const std::string &path) {
 // X2TConverter
 // ======================================================================
 
-X2TConverter::X2TConverter(const std::string &preferredEngine) {
+X2TConverter::X2TConverter(const std::string &preferredEngine, const std::string &customPath) {
     std::vector<std::string> searchPaths;
+
+    auto addBaseCandidate = [&](const std::string &basePath) {
+        if (basePath.empty()) return;
+        struct stat st;
+        if (stat(basePath.c_str(), &st) != 0) return;
+        if (S_ISREG(st.st_mode)) {
+            // If path points to executable/wrapper script (e.g. /usr/bin/euro-office-euro-office)
+            size_t slash = basePath.find_last_of('/');
+            if (slash != std::string::npos) {
+                std::string dir = basePath.substr(0, slash);
+                if (fileExists(dir + "/converter/x2t")) searchPaths.push_back(dir);
+            }
+            char real[PATH_MAX];
+            if (realpath(basePath.c_str(), real)) {
+                std::string rstr(real);
+                size_t rslash = rstr.find_last_of('/');
+                if (rslash != std::string::npos) {
+                    std::string rdir = rstr.substr(0, rslash);
+                    if (fileExists(rdir + "/converter/x2t")) searchPaths.push_back(rdir);
+                }
+            }
+        } else if (S_ISDIR(st.st_mode)) {
+            if (fileExists(basePath + "/converter/x2t")) searchPaths.push_back(basePath);
+        }
+    };
+
+    if (!customPath.empty()) addBaseCandidate(customPath);
+
     if (preferredEngine == "EuroOffice") {
-        searchPaths = {"/opt/euro-office/desktopeditors", "/opt/onlyoffice/desktopeditors"};
+        searchPaths.push_back("/opt/euro-office/euro-office");
+        searchPaths.push_back("/opt/euro-office/desktopeditors");
+        searchPaths.push_back("/opt/onlyoffice/desktopeditors");
     } else {
-        searchPaths = {"/opt/onlyoffice/desktopeditors", "/opt/euro-office/desktopeditors"};
+        searchPaths.push_back("/opt/onlyoffice/desktopeditors");
+        searchPaths.push_back("/opt/euro-office/euro-office");
+        searchPaths.push_back("/opt/euro-office/desktopeditors");
     }
+
+    // Check binaries in PATH
+    ProcessResult whichEuro = runProcess("which", {"euro-office-euro-office"}, 2000);
+    if (whichEuro.exitCode == 0) addBaseCandidate(trim(whichEuro.stdoutData));
+    ProcessResult whichOnly = runProcess("which", {"onlyoffice-desktopeditors"}, 2000);
+    if (whichOnly.exitCode == 0) addBaseCandidate(trim(whichOnly.stdoutData));
+    ProcessResult whichDesk = runProcess("which", {"desktopeditors"}, 2000);
+    if (whichDesk.exitCode == 0) addBaseCandidate(trim(whichDesk.stdoutData));
+
     for (auto &basePath : searchPaths) {
         std::string bin = basePath + "/converter/x2t";
         if (fileExists(bin)) {
@@ -797,15 +838,58 @@ static LibreOfficeKit *g_lokOffice = nullptr;
 static const int kTwipsPerPixel = 15;
 
 std::string findLibreOfficePath(Config &cfg) {
-    const char *env = getenv("LO_PATH");
-    if (env && *env && fileExists(env)) return env;
+    auto isValidLoDir = [](const std::string &dir) -> bool {
+        return fileExists(dir + "/libsofficeapp.so") || fileExists(dir + "/libmergedlo.so");
+    };
 
-    if (!cfg.libreOfficePath.empty() && fileExists(cfg.libreOfficePath)) return cfg.libreOfficePath;
+    auto resolveCandidate = [&](const std::string &path) -> std::string {
+        if (path.empty()) return "";
+        struct stat st;
+        if (stat(path.c_str(), &st) != 0) return "";
+        if (S_ISREG(st.st_mode)) {
+            char real[PATH_MAX];
+            if (realpath(path.c_str(), real)) {
+                std::string rstr(real);
+                size_t rslash = rstr.find_last_of('/');
+                if (rslash != std::string::npos) {
+                    std::string dir = rstr.substr(0, rslash);
+                    if (isValidLoDir(dir)) return dir;
+                    if (isValidLoDir(dir + "/program")) return dir + "/program";
+                }
+            }
+        } else if (S_ISDIR(st.st_mode)) {
+            if (isValidLoDir(path)) return path;
+            if (isValidLoDir(path + "/program")) return path + "/program";
+        }
+        return "";
+    };
+
+    const char *env = getenv("LO_PATH");
+    if (env && *env) {
+        std::string r = resolveCandidate(env);
+        if (!r.empty()) return r;
+    }
+
+    if (!cfg.libreOfficePath.empty()) {
+        std::string r = resolveCandidate(cfg.libreOfficePath);
+        if (!r.empty()) return r;
+    }
+
+    ProcessResult whichSoffice = runProcess("which", {"soffice"}, 2000);
+    if (whichSoffice.exitCode == 0) {
+        std::string r = resolveCandidate(trim(whichSoffice.stdoutData));
+        if (!r.empty()) { cfg.libreOfficePath = r; return r; }
+    }
+    ProcessResult whichLo = runProcess("which", {"libreoffice"}, 2000);
+    if (whichLo.exitCode == 0) {
+        std::string r = resolveCandidate(trim(whichLo.stdoutData));
+        if (!r.empty()) { cfg.libreOfficePath = r; return r; }
+    }
 
     std::vector<std::string> fallbacks = {
         "/usr/lib/libreoffice/program", "/usr/lib64/libreoffice/program", "/opt/libreoffice/program"};
     for (auto &fb : fallbacks) {
-        if (fileExists(fb)) { cfg.libreOfficePath = fb; return fb; }
+        if (isValidLoDir(fb)) { cfg.libreOfficePath = fb; return fb; }
     }
     return "";
 }

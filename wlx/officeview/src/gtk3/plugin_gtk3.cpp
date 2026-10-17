@@ -353,7 +353,8 @@ EXPORT HWND DCPCALL ListLoad(HWND ParentWin, char *FileToLoad, int ShowFlags) {
     bool rendered = false;
 
     if (selectedEngine == "EuroOffice" || selectedEngine == "OnlyOffice" || selectedEngine == "Auto") {
-        X2TConverter wrapper(selectedEngine);
+        std::string customPath = (selectedEngine == "EuroOffice") ? cfg.euroOfficePath : cfg.onlyOfficePath;
+        X2TConverter wrapper(selectedEngine, customPath);
         if (wrapper.isLoaded) {
             std::string outPath = std::string(getenv("TMPDIR") ? getenv("TMPDIR") : "/tmp") +
                                    "/officeview_" + std::to_string(getpid()) + ".pdf";

@@ -413,26 +413,64 @@ private:
 };
 
 QString findLibreOfficePath() {
+    auto isValidLoDir = [](const QString& dir) -> bool {
+        return QFileInfo::exists(dir + "/libsofficeapp.so") ||
+               QFileInfo::exists(dir + "/libmergedlo.so");
+    };
+
+    auto resolveCandidate = [&](const QString& path) -> QString {
+        if (path.isEmpty()) return QString();
+        QFileInfo fi(path);
+        if (!fi.exists()) return QString();
+
+        // If path points to an executable or symlink (e.g. /usr/bin/soffice)
+        if (fi.isFile()) {
+            QFileInfo canonical(fi.canonicalFilePath());
+            QString dir = canonical.dir().absolutePath();
+            if (isValidLoDir(dir)) return dir;
+            if (isValidLoDir(dir + "/program")) return dir + "/program";
+        }
+        // If path is a directory (e.g. /usr/lib/libreoffice or .../program)
+        if (fi.isDir()) {
+            if (isValidLoDir(path)) return path;
+            if (isValidLoDir(path + "/program")) return path + "/program";
+        }
+        return QString();
+    };
+
+    // 1. LO_PATH environment variable
     QByteArray envPath = qgetenv("LO_PATH");
     if (!envPath.isEmpty()) {
-        QFileInfo fi(envPath);
-        if (fi.exists() && fi.isDir()) return QString(envPath);
+        QString resolved = resolveCandidate(QString::fromLocal8Bit(envPath));
+        if (!resolved.isEmpty()) return resolved;
     }
     
+    // 2. Configured path
     QString confPath = getConfigValue("Paths", "LibreOfficePath");
     if (!confPath.isEmpty()) {
-        QFileInfo fi(confPath);
-        if (fi.exists() && fi.isDir()) return confPath;
+        QString resolved = resolveCandidate(confPath);
+        if (!resolved.isEmpty()) return resolved;
     }
 
+    // 3. System PATH (soffice / libreoffice)
+    QString binInPath = QStandardPaths::findExecutable("soffice");
+    if (binInPath.isEmpty()) binInPath = QStandardPaths::findExecutable("libreoffice");
+    if (!binInPath.isEmpty()) {
+        QString resolved = resolveCandidate(binInPath);
+        if (!resolved.isEmpty()) {
+            setConfigValue("Paths", "LibreOfficePath", resolved);
+            return resolved;
+        }
+    }
+
+    // 4. Common fallback directories
     QStringList fallbacks = {
         "/usr/lib/libreoffice/program",
         "/usr/lib64/libreoffice/program",
         "/opt/libreoffice/program"
     };
     for (const QString& fb : fallbacks) {
-        QFileInfo fi(fb);
-        if (fi.exists() && fi.isDir()) {
+        if (isValidLoDir(fb)) {
             setConfigValue("Paths", "LibreOfficePath", fb);
             return fb;
         }
@@ -685,13 +723,49 @@ public:
 
     X2TWrapper(const QString& preferredEngine) {
         QStringList searchPaths;
+
+        auto addBaseCandidate = [&](const QString& basePath) {
+            if (basePath.isEmpty()) return;
+            QFileInfo fi(basePath);
+            if (!fi.exists()) return;
+            if (fi.isFile()) {
+                // If user pointed to an executable/launcher script (e.g. /usr/bin/euro-office-euro-office or /opt/.../DesktopEditors)
+                QString dir = fi.dir().absolutePath();
+                if (QFileInfo::exists(dir + "/converter/x2t")) searchPaths << dir;
+                QFileInfo canonical(fi.canonicalFilePath());
+                QString cdir = canonical.dir().absolutePath();
+                if (QFileInfo::exists(cdir + "/converter/x2t")) searchPaths << cdir;
+            } else if (fi.isDir()) {
+                if (QFileInfo::exists(basePath + "/converter/x2t")) searchPaths << basePath;
+            }
+        };
+
+        // 1. Check user-configured paths from officeview.conf
         if (preferredEngine == "EuroOffice") {
+            addBaseCandidate(getConfigValue("Paths", "EuroOfficePath"));
+            addBaseCandidate(getConfigValue("Paths", "OnlyOfficePath"));
+        } else {
+            addBaseCandidate(getConfigValue("Paths", "OnlyOfficePath"));
+            addBaseCandidate(getConfigValue("Paths", "EuroOfficePath"));
+        }
+
+        // 2. Check standard system directories (including Arch/CachyOS package layout)
+        if (preferredEngine == "EuroOffice") {
+            searchPaths << "/opt/euro-office/euro-office";
             searchPaths << "/opt/euro-office/desktopeditors";
             searchPaths << "/opt/onlyoffice/desktopeditors";
         } else {
             searchPaths << "/opt/onlyoffice/desktopeditors";
+            searchPaths << "/opt/euro-office/euro-office";
             searchPaths << "/opt/euro-office/desktopeditors";
         }
+
+        // 3. Check launchers in PATH
+        QString euroBin = QStandardPaths::findExecutable("euro-office-euro-office");
+        if (!euroBin.isEmpty()) addBaseCandidate(euroBin);
+        QString onlyBin = QStandardPaths::findExecutable("onlyoffice-desktopeditors");
+        if (onlyBin.isEmpty()) onlyBin = QStandardPaths::findExecutable("desktopeditors");
+        if (!onlyBin.isEmpty()) addBaseCandidate(onlyBin);
 
         for (const QString& basePath : searchPaths) {
             QString bin = basePath + "/converter/x2t";
@@ -1302,7 +1376,10 @@ extern "C" {
                 printf("[OfficeView] Falling back to LibreOfficeKit for %s\n", filePath.toUtf8().constData());
                 fflush(stdout);
                 selectedEngine = "LibreOffice";
-            } else if (enginePrefOOXML == "Auto" || enginePrefODF == "Auto") {
+            } else {
+                printf("[OfficeView] %s (x2t) not available, falling back to LibreOfficeKit for %s\n",
+                       selectedEngine.toUtf8().constData(), filePath.toUtf8().constData());
+                fflush(stdout);
                 selectedEngine = "LibreOffice";
             }
         }
