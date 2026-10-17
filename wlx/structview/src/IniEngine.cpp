@@ -114,7 +114,8 @@ std::unique_ptr<TextFormatEngine> TextFormatEngine::createForFile(const QString 
     if (ext == QStringLiteral("json"))
         return createJsonEngine();
     if (ext == QStringLiteral("xml") || ext == QStringLiteral("svg")
-        || ext == QStringLiteral("xhtml") || ext == QStringLiteral("plist"))
+        || ext == QStringLiteral("xhtml") || ext == QStringLiteral("plist")
+        || ext == QStringLiteral("rss") || ext == QStringLiteral("atom"))
         return createXmlEngine();
     if (ext == QStringLiteral("cbor"))
         return createCborEngine();

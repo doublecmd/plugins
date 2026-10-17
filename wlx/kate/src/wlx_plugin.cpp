@@ -158,6 +158,7 @@ void DCPCALL ListGetDetectString(char* DetectString, int maxlen) {
         }
     }
     
+    allExts.insert(QStringLiteral("CONF"));
     if (allExts.isEmpty()) {
         const char* detectStr = "EXT=\"TXT\" | EXT=\"PAS\" | EXT=\"C\" | EXT=\"CPP\" | EXT=\"H\" | EXT=\"PY\" | EXT=\"JS\" | EXT=\"HTML\" | EXT=\"CSS\" | EXT=\"JSON\" | EXT=\"XML\" | EXT=\"MD\" | EXT=\"SH\"";
         strncpy(DetectString, detectStr, maxlen - 1);

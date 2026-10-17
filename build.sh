@@ -106,6 +106,14 @@ install -m 644 wlx/structview/build/structview_qt6.wlx release/wlx/structview/
 install -m 644 wlx/structview/*.md release/wlx/structview/
 install -m 644 wlx/structview/*.png release/wlx/structview/
 
+# certview: Qt6 required, GTK3 optional
+mkdir -p release/wlx/certview
+mkdir -p wlx/certview/build
+(cd wlx/certview/build && cmake .. && make)
+install -m 644 wlx/certview/build/certview_qt6.wlx release/wlx/certview/
+[ -f wlx/certview/build/certview_gtk3.wlx ] && install -m 644 wlx/certview/build/certview_gtk3.wlx release/wlx/certview/
+install -m 644 wlx/certview/*.md release/wlx/certview/
+
 # sourceview: GTK3 only, no Qt6 variant exists
 mkdir -p release/wlx/sourceview
 mkdir -p wlx/sourceview/build

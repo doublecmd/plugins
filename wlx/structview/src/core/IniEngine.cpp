@@ -115,7 +115,7 @@ std::unique_ptr<TextFormatEngine> TextFormatEngine::createForFile(const std::str
     std::string ext = extensionOf(filepath);
 
     if (ext == "json") return createJsonEngine();
-    if (ext == "xml" || ext == "svg" || ext == "xhtml" || ext == "plist") return createXmlEngine();
+    if (ext == "xml" || ext == "svg" || ext == "xhtml" || ext == "plist" || ext == "rss" || ext == "atom") return createXmlEngine();
     if (ext == "cbor") return createCborEngine();
     if (ext == "ini" || ext == "cfg" || ext == "conf" || ext == "desktop" || ext == "inf") return createIniEngine();
     if (ext == "yaml" || ext == "yml") return createYamlEngine();
