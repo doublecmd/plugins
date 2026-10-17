@@ -1,0 +1,7 @@
+build/
+*.wlx
+*.o
+*.a
+test_core_bin
+test_qt6_wlx
+test_gtk3_wlx
